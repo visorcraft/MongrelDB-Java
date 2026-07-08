@@ -1,8 +1,8 @@
 # Transactions
 
 MongrelDB commits every write through a single atomic transaction endpoint
-(`POST /kit/txn`). This guide covers the two ways to use it — a one-shot
-single op, and a staged batch — plus idempotency keys for safe retries, typed
+(`POST /kit/txn`). This guide covers the two ways to use it - a one-shot
+single op, and a staged batch - plus idempotency keys for safe retries, typed
 constraint-violation handling, and rollback.
 
 The engine enforces `UNIQUE`, foreign-key, check, and trigger constraints at
@@ -41,12 +41,12 @@ txn.put("orders", Map.of(1L, 10L, 2L, "Dave", 3L, 50.0), false);
 txn.put("orders", Map.of(1L, 11L, 2L, "Eve", 3L, 75.0), false);
 txn.deleteByPk("orders", 2L);
 
-List<Map<String, Object>> results = txn.commit(null); // atomic — all or nothing
+List<Map<String, Object>> results = txn.commit(null); // atomic - all or nothing
 System.out.println("committed " + results.size() + " ops");
 ```
 
 The third argument to `Transaction.put` is `returning`. Set it to `true` to
-have the daemon echo the written row back in the result map — useful for
+have the daemon echo the written row back in the result map - useful for
 reading server-assigned values.
 
 ```java
@@ -95,12 +95,12 @@ Rules for keys:
 
 - Any non-empty string works. Prefer content-derived, globally-unique values
   (e.g. `"charge:" + orderId`).
-- `null` (or the empty string) disables idempotency — a retry will commit
+- `null` (or the empty string) disables idempotency - a retry will commit
   again.
 - The key scopes the **entire batch**, not individual ops. Reuse the exact
   same ops and key together when retrying.
 
-A safe retry loop — build the transaction inside the loop so a failed attempt
+A safe retry loop - build the transaction inside the loop so a failed attempt
 can be retried cleanly:
 
 ```java
@@ -115,7 +115,7 @@ public void commitWithRetry(List<Map<String, Object>> ops, String key) throws Ex
             txn.commit(key);
             return;
         } catch (ConflictException | AuthException e) {
-            throw e; // not transient — do not retry
+            throw e; // not transient - do not retry
         } catch (MongrelDBException e) {
             // Network/server error (QueryException). The idempotency key makes
             // it safe to retry.

@@ -85,7 +85,7 @@ Structured codes you will commonly see in `code()`:
 
 ## Discriminating errors
 
-### By type — catch the specific subclass
+### By type - catch the specific subclass
 
 ```java
 try {
@@ -105,7 +105,7 @@ Because all four subclasses share the parent, a single `catch
 (MongrelDBException e)` handles everything if you only need to know it
 failed.
 
-### By details — read the fields
+### By details - read the fields
 
 ```java
 try {
@@ -129,7 +129,7 @@ try {
 
 ## Recovery patterns
 
-### Auth failure — do not retry blindly
+### Auth failure - do not retry blindly
 
 A retry will not fix bad credentials. Surface the error to the caller or
 operator.
@@ -143,7 +143,7 @@ try {
 }
 ```
 
-### Not found — fall back, do not crash
+### Not found - fall back, do not crash
 
 For lookups by primary key, a 404 may be a normal "absent" result.
 
@@ -154,14 +154,14 @@ try {
             .execute();
     return rows;
 } catch (NotFoundException e) {
-    return List.of(); // table missing — treat as empty
+    return List.of(); // table missing - treat as empty
 }
 ```
 
 Note: a `pk` query against an existing table returns zero rows, not a 404;
 `NotFoundException` here means the table itself is missing.
 
-### Constraint conflict — report the offending op
+### Constraint conflict - report the offending op
 
 ```java
 try {
@@ -175,9 +175,9 @@ try {
 }
 ```
 
-The engine already rolled back the whole batch — there is nothing to undo.
+The engine already rolled back the whole batch - there is nothing to undo.
 
-### Transient failure — retry with an idempotency key
+### Transient failure - retry with an idempotency key
 
 `QueryException` covers transport and 5xx failures. With an idempotency key,
 retrying a transaction is safe (see [transactions.md](transactions.md)).
@@ -189,7 +189,7 @@ public void run(Transaction txn, String key) {
     } catch (AuthException | ConflictException e) {
         throw e; // not transient
     } catch (MongrelDBException e) {
-        // QueryException / network — caller may retry with the same key.
+        // QueryException / network - caller may retry with the same key.
         throw e;
     }
 }
@@ -203,7 +203,7 @@ twice. Fix the control flow rather than catching it.
 
 ```java
 txn.commit(null);
-txn.commit(null); // throws IllegalStateException — logic bug
+txn.commit(null); // throws IllegalStateException - logic bug
 ```
 
 ## Quick reference
@@ -235,5 +235,5 @@ try {
 
 ## Next steps
 
-- [transactions.md](transactions.md) — constraint handling and retries in context
-- [auth.md](auth.md) — credential management
+- [transactions.md](transactions.md) - constraint handling and retries in context
+- [auth.md](auth.md) - credential management

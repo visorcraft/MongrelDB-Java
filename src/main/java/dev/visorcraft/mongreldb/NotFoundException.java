@@ -1,7 +1,7 @@
 package dev.visorcraft.mongreldb;
 
 /**
- * Raised for HTTP 404 responses — a missing table, schema, or other resource.
+ * Raised for HTTP 404 responses - a missing table, schema, or other resource.
  */
 public class NotFoundException extends MongrelDBException {
 

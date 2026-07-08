@@ -1,7 +1,7 @@
 package dev.visorcraft.mongreldb;
 
 /**
- * Raised for HTTP 401 or 403 responses — bad or missing credentials.
+ * Raised for HTTP 401 or 403 responses - bad or missing credentials.
  *
  * <p>The daemon returns these when started in {@code --auth-token} or
  * {@code --auth-users} mode and the request lacks valid credentials.

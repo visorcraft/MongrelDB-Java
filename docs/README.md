@@ -1,4 +1,4 @@
-# MongrelDB Java Client — Guides
+# MongrelDB Java Client - Guides
 
 Task-focused guides for the pure-Java MongrelDB HTTP client (Java 11+,
 standard-library `HttpClient`, no external dependencies). For the full API

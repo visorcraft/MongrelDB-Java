@@ -204,7 +204,7 @@ public final class MongrelDB {
 
     /**
      * Inserts a row. {@code idempotencyKey}, when non-null and non-empty, makes
-     * the commit safe to retry — the daemon returns the original result on
+     * the commit safe to retry - the daemon returns the original result on
      * duplicate commits.
      *
      * @param table         the target table
@@ -537,7 +537,7 @@ public final class MongrelDB {
     /**
      * Flattens a column-id-to-value map to the server's flat
      * {@code [col_id, value, col_id, value, ...]} array. Pair order is not
-     * significant — each value is preceded by its own column id.
+     * significant - each value is preceded by its own column id.
      */
     static List<Object> flattenCells(Map<Long, ?> cells) {
         List<Object> flat = new ArrayList<>(cells.size() * 2);
@@ -721,8 +721,8 @@ public final class MongrelDB {
     /**
      * Minimal JSON codec used internally by the client. It encodes and decodes
      * {@code Map<String,Object>}, {@code List<Object>}, {@code Number},
-     * {@code Boolean}, {@code String}, and {@code null} — the exact shape the
-     * daemon's JSON API uses — without pulling in a third-party dependency.
+     * {@code Boolean}, {@code String}, and {@code null} - the exact shape the
+     * daemon's JSON API uses - without pulling in a third-party dependency.
      *
      * <p>This is intentionally narrow: it is not a general-purpose JSON library.
      */

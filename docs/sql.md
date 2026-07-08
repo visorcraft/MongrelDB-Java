@@ -7,8 +7,8 @@ SQL with `MongrelDB.sql`:
 List<Map<String, Object>> rows = db.sql("SELECT 1");
 ```
 
-This guide covers the SQL surface — DDL, DML, `CREATE TABLE AS SELECT`,
-recursive CTEs, and window functions — and when to reach for SQL versus the
+This guide covers the SQL surface - DDL, DML, `CREATE TABLE AS SELECT`,
+recursive CTEs, and window functions - and when to reach for SQL versus the
 native query builder.
 
 ---
@@ -22,7 +22,7 @@ otherwise.
 In practice:
 
 - **DDL and DML** (`CREATE TABLE`, `INSERT`, `UPDATE`, `DELETE`) reply with a
-  non-JSON status body. `sql` returns an empty list — success is the signal.
+  non-JSON status body. `sql` returns an empty list - success is the signal.
 - **`SELECT`** in most daemon builds streams Arrow IPC bytes rather than JSON.
   `sql` therefore returns an empty list for SELECTs too. Use the native
   `QueryBuilder` for typed row retrieval in application code, and use `sql`
@@ -185,7 +185,7 @@ Rules of thumb:
   builder.
 - Building/dropping tables, or running a `CREATE TABLE AS SELECT`? Use SQL.
 - Joining multiple tables, computing rankings, or walking a graph? Use SQL.
-- Filtering by one or more indexed columns? Use the query builder — it is
+- Filtering by one or more indexed columns? Use the query builder - it is
   faster and avoids Arrow-to-Java decoding.
 
 Mix freely: create tables with SQL, write rows with `MongrelDB.put`, read them
@@ -193,6 +193,6 @@ back with `QueryBuilder`, and run analytics with SQL.
 
 ## Next steps
 
-- [queries.md](queries.md) — every native index condition in detail
-- [transactions.md](transactions.md) — bulk inserts via batch transactions
-- [errors.md](errors.md) — handling SQL execution errors
+- [queries.md](queries.md) - every native index condition in detail
+- [transactions.md](transactions.md) - bulk inserts via batch transactions
+- [errors.md](errors.md) - handling SQL execution errors

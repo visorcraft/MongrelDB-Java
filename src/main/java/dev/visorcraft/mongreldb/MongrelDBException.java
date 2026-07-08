@@ -8,11 +8,11 @@ package dev.visorcraft.mongreldb;
  * failure, or catch one of the specific subclasses:
  *
  * <ul>
- *   <li>{@link AuthException} — HTTP 401/403 (bad or missing credentials)
- *   <li>{@link NotFoundException} — HTTP 404 (missing table, schema, etc.)
- *   <li>{@link ConflictException} — HTTP 409 (unique, foreign-key, check, or
+ *   <li>{@link AuthException} - HTTP 401/403 (bad or missing credentials)
+ *   <li>{@link NotFoundException} - HTTP 404 (missing table, schema, etc.)
+ *   <li>{@link ConflictException} - HTTP 409 (unique, foreign-key, check, or
  *       trigger constraint violations)
- *   <li>{@link QueryException} — HTTP 400 or 5xx, and any other request-level
+ *   <li>{@link QueryException} - HTTP 400 or 5xx, and any other request-level
  *       failure not covered by the more specific subclasses
  * </ul>
  *

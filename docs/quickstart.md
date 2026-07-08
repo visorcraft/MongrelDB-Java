@@ -114,7 +114,7 @@ public class Main {
 
         // 3. Create a table. Each column is a Map with id, name, ty, and flags.
         //    The first column is the primary key. Column ids are stable on-wire
-        //    identifiers — use them everywhere else.
+        //    identifiers - use them everywhere else.
         long tableId = db.createTable("orders", List.of(
                 column(1L, "id", "int64", true),
                 column(2L, "customer", "varchar", false),
@@ -185,7 +185,7 @@ total rows: 2
 
 **Using the column name instead of the column id.** Every on-wire API uses
 the numeric `id` from `createTable`, never the `name`. The query builder's
-`column` alias maps to the server's `column_id` — pass the `Long` id, not the
+`column` alias maps to the server's `column_id` - pass the `Long` id, not the
 string name:
 
 ```java
@@ -222,8 +222,8 @@ construct the client with a token or Basic credentials. See [auth.md](auth.md).
 
 ## Next steps
 
-- [transactions.md](transactions.md) — atomic batches, idempotency, retries
-- [queries.md](queries.md) — every native index condition
-- [sql.md](sql.md) — recursive CTEs, window functions, `CREATE TABLE AS SELECT`
-- [auth.md](auth.md) — bearer tokens, basic auth, user/role management
-- [errors.md](errors.md) — the full exception hierarchy and recovery patterns
+- [transactions.md](transactions.md) - atomic batches, idempotency, retries
+- [queries.md](queries.md) - every native index condition
+- [sql.md](sql.md) - recursive CTEs, window functions, `CREATE TABLE AS SELECT`
+- [auth.md](auth.md) - bearer tokens, basic auth, user/role management
+- [errors.md](errors.md) - the full exception hierarchy and recovery patterns

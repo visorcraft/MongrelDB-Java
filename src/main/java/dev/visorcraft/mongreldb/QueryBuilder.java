@@ -54,18 +54,18 @@ public final class QueryBuilder {
      *
      * <p>Available condition types include:
      * <ul>
-     *   <li>{@code pk} — exact primary-key match ({@code {value: pk}})
-     *   <li>{@code bitmap_eq} — equality on a bitmap-indexed column
-     *   <li>{@code bitmap_in} — IN predicate on a bitmap-indexed column
-     *   <li>{@code range} — integer range predicate (lo/hi, inclusive)
-     *   <li>{@code range_f64} — float range predicate (lo/hi + lo_inclusive/hi_inclusive)
-     *   <li>{@code is_null} — null check
-     *   <li>{@code is_not_null} — non-null check
-     *   <li>{@code fm_contains} — full-text substring search (FM-index)
-     *   <li>{@code fm_contains_all} — multiple substring patterns (all must match)
-     *   <li>{@code ann} — dense vector similarity search (HNSW)
-     *   <li>{@code sparse_match} — sparse vector match
-     *   <li>{@code min_hash_similar} — MinHash similarity search
+     *   <li>{@code pk} - exact primary-key match ({@code {value: pk}})
+     *   <li>{@code bitmap_eq} - equality on a bitmap-indexed column
+     *   <li>{@code bitmap_in} - IN predicate on a bitmap-indexed column
+     *   <li>{@code range} - integer range predicate (lo/hi, inclusive)
+     *   <li>{@code range_f64} - float range predicate (lo/hi + lo_inclusive/hi_inclusive)
+     *   <li>{@code is_null} - null check
+     *   <li>{@code is_not_null} - non-null check
+     *   <li>{@code fm_contains} - full-text substring search (FM-index)
+     *   <li>{@code fm_contains_all} - multiple substring patterns (all must match)
+     *   <li>{@code ann} - dense vector similarity search (HNSW)
+     *   <li>{@code sparse_match} - sparse vector match
+     *   <li>{@code min_hash_similar} - MinHash similarity search
      * </ul>
      *
      * @param condType the condition type

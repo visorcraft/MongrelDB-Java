@@ -12,7 +12,7 @@
 
     <name>MongrelDB Java Client</name>
     <description>
-        Pure-Java HTTP client for MongrelDB — typed CRUD, a fluent query
+        Pure-Java HTTP client for MongrelDB - typed CRUD, a fluent query
         builder that pushes conditions down to the engine's native indexes,
         idempotent batch transactions, full SQL access, and schema
         introspection, all over the standard library HttpClient (Java 11+).

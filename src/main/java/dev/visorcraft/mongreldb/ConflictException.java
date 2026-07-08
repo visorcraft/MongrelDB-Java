@@ -1,7 +1,7 @@
 package dev.visorcraft.mongreldb;
 
 /**
- * Raised for HTTP 409 responses — a unique, foreign-key, check, or trigger
+ * Raised for HTTP 409 responses - a unique, foreign-key, check, or trigger
  * constraint violation.
  *
  * <p>During a transaction commit, the engine enforces all constraints at commit

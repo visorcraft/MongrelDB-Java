@@ -23,7 +23,7 @@ import java.util.Objects;
  * txn.put("orders", Map.of(1L, 10L, 2L, "Dave"), false);
  * txn.put("orders", Map.of(1L, 11L, 2L, "Eve"), false);
  * txn.deleteByPk("orders", 2L);
- * List<Map<String,Object>> results = txn.commit(null); // atomic — all or nothing
+ * List<Map<String,Object>> results = txn.commit(null); // atomic - all or nothing
  * }</pre>
  */
 public final class Transaction {
@@ -137,7 +137,7 @@ public final class Transaction {
     /**
      * Sends all staged operations atomically and returns the per-operation
      * results. {@code idempotencyKey}, when non-null and non-empty, makes the
-     * commit safe to retry — the daemon returns the original response on
+     * commit safe to retry - the daemon returns the original response on
      * duplicate commits, even after a crash.
      *
      * @param idempotencyKey an idempotency key, or {@code null}

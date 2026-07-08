@@ -1,8 +1,8 @@
 # MongrelDB Java Client
 
-MongrelDB Java Client is the pure-Java HTTP client for [MongrelDB](https://www.MongrelDB.com). It gives Java applications a typed CRUD surface, a fluent query builder that pushes conditions down to MongrelDB's native indexes, idempotent batch transactions, full SQL access, and schema introspection — all over HTTP to a running `mongreldb-server` daemon.
+MongrelDB Java Client is the pure-Java HTTP client for [MongrelDB](https://www.MongrelDB.com). It gives Java applications a typed CRUD surface, a fluent query builder that pushes conditions down to MongrelDB's native indexes, idempotent batch transactions, full SQL access, and schema introspection - all over HTTP to a running `mongreldb-server` daemon.
 
-No external dependencies — built on the standard library `java.net.http.HttpClient` (Java 11+). The API mirrors the MongrelDB PHP and Go clients.
+No external dependencies - built on the standard library `java.net.http.HttpClient` (Java 11+). The API mirrors the MongrelDB PHP and Go clients.
 
 [![Java CI](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml/badge.svg)](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-java.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-java)
@@ -37,7 +37,7 @@ implementation 'dev.visorcraft:mongreldb-java:0.1.0'
 implementation("dev.visorcraft:mongreldb-java:0.1.0")
 ```
 
-The artifact has no runtime dependencies — only the Java standard library.
+The artifact has no runtime dependencies - only the Java standard library.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ The artifact has no runtime dependencies — only the Java standard library.
 
 - **Typed CRUD** over the Kit transaction endpoint: `put`, `upsert` (insert-or-update on PK conflict), `delete` by row id or primary key, all with optional idempotency keys for safe retries.
 - **Fluent query builder** that pushes conditions down to the engine's specialized indexes for sub-millisecond lookups: bitmap equality/IN, learned-range, null checks, FM-index full-text search, HNSW vector similarity (`ann`), and sparse vector match. Friendly aliases (`column` → `column_id`, `min`/`max` → `lo`/`hi`) are translated to the server's on-wire keys.
-- **Idempotent batch transactions** — operations staged locally and committed atomically, with the engine enforcing unique, foreign-key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
+- **Idempotent batch transactions** - operations staged locally and committed atomically, with the engine enforcing unique, foreign-key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
 - **Full SQL access** through the DataFusion-backed `/sql` endpoint: recursive CTEs, window functions, `CREATE TABLE AS SELECT`, materialized views, and multi-statement execution.
 - **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
 - **User/role/credentials management** via SQL: Argon2id-hashed catalog users, roles, and `GRANT`/`REVOKE` table-level permissions, all executed through `sql`.
@@ -60,12 +60,12 @@ The artifact has no runtime dependencies — only the Java standard library.
 
 Task-focused, commented guides live in [`docs/`](docs):
 
-- [Quickstart](docs/quickstart.md) — install, start the daemon, write and run a complete program.
-- [Transactions](docs/transactions.md) — batch commits, idempotency keys, constraint handling.
-- [Queries](docs/queries.md) — every native condition type and the index it pushes down to.
-- [SQL](docs/sql.md) — recursive CTEs, window functions, advanced SQL.
-- [Authentication](docs/auth.md) — Bearer token, HTTP Basic, and open modes.
-- [Errors](docs/errors.md) — the exception hierarchy and recovery patterns.
+- [Quickstart](docs/quickstart.md) - install, start the daemon, write and run a complete program.
+- [Transactions](docs/transactions.md) - batch commits, idempotency keys, constraint handling.
+- [Queries](docs/queries.md) - every native condition type and the index it pushes down to.
+- [SQL](docs/sql.md) - recursive CTEs, window functions, advanced SQL.
+- [Authentication](docs/auth.md) - Bearer token, HTTP Basic, and open modes.
+- [Errors](docs/errors.md) - the exception hierarchy and recovery patterns.
 
 ## Quick Example
 
@@ -145,14 +145,14 @@ txn.put("orders", Map.of(1L, 11L, 2L, "Eve",  3L, 75.00), false);
 txn.deleteByPk("orders", 2L);
 
 try {
-    List<Map<String, Object>> results = txn.commit(null); // atomic — all or nothing
+    List<Map<String, Object>> results = txn.commit(null); // atomic - all or nothing
 } catch (ConflictException e) {
     // A constraint violation rolled back every op.
     System.out.printf("duplicate: %s at op %d%n", e.code(), e.opIndex());
     txn.rollback(); // discard locally as well
 }
 
-// Idempotent commit — safe to retry; the daemon returns the original response.
+// Idempotent commit - safe to retry; the daemon returns the original response.
 Transaction txn2 = db.begin();
 txn2.put("orders", Map.of(1L, 20L, 2L, "Frank", 3L, 100.00), false);
 txn2.commit("order-20-create");
@@ -354,7 +354,7 @@ chmod +x bin/mongreldb-server
 Contributions are welcome. Please:
 
 1. Open an issue first for non-trivial changes.
-2. Add focused tests near your change — the suite must stay green.
+2. Add focused tests near your change - the suite must stay green.
 3. Keep the client dependency-free (Java standard library only).
 
 ## License
