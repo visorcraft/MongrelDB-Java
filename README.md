@@ -1,13 +1,21 @@
-# MongrelDB Java Client
+<p align="center">
+  <img src="assets/mongrel.png" alt="MongrelDB logo" width="250" />
+</p>
 
-MongrelDB Java Client is the pure-Java HTTP client for [MongrelDB](https://www.MongrelDB.com). It gives Java applications a typed CRUD surface, a fluent query builder that pushes conditions down to MongrelDB's native indexes, idempotent batch transactions, full SQL access, and schema introspection - all over HTTP to a running `mongreldb-server` daemon.
+<h1 align="center">MongrelDB Java Client</h1>
 
-No external dependencies - built on the standard library `java.net.http.HttpClient` (Java 11+). The API mirrors the MongrelDB PHP and Go clients.
+<p align="center">
+  <b>Pure Java client for MongrelDB - embedded+server database with SQL, vector search, full-text search, and AI-native retrieval.</b>
+  <br />
+  No external dependencies - built on the standard library <code>java.net.http.HttpClient</code> (Java 11+). The API mirrors the MongrelDB PHP and Go clients.
+</p>
 
-[![Java CI](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml/badge.svg)](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-java.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-java)
-[![Java](https://img.shields.io/badge/Java-11%2B-blue.svg)](https://openjdk.org/)
-[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+<p align="center">
+  <a href="https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml"><img src="https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml/badge.svg" alt="Java CI" /></a>
+  <a href="https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-java"><img src="https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-java.svg?label=Maven%20Central" alt="Maven Central" /></a>
+  <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-11%2B-blue.svg" alt="Java" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License" /></a>
+</p>
 
 ## Package
 
