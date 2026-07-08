@@ -1,0 +1,332 @@
+# MongrelDB Java Client
+
+MongrelDB Java Client is the pure-Java HTTP client for [MongrelDB](https://www.MongrelDB.com). It gives Java applications a typed CRUD surface, a fluent query builder that pushes conditions down to MongrelDB's native indexes, idempotent batch transactions, full SQL access, and schema introspection — all over HTTP to a running `mongreldb-server` daemon.
+
+No external dependencies — built on the standard library `java.net.http.HttpClient` (Java 11+). The API mirrors the MongrelDB PHP and Go clients.
+
+[![Java CI](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml/badge.svg)](https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-java.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-java)
+[![Java](https://img.shields.io/badge/Java-11%2B-blue.svg)](https://openjdk.org/)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+
+## Requirements
+
+- **Java 11 or newer**
+- A running [`mongreldb-server`](https://github.com/visorcraft/MongrelDB) daemon
+
+## What It Provides
+
+- **Typed CRUD** over the Kit transaction endpoint: `put`, `upsert` (insert-or-update on PK conflict), `delete` by row id or primary key, all with optional idempotency keys for safe retries.
+- **Fluent query builder** that pushes conditions down to the engine's specialized indexes for sub-millisecond lookups: bitmap equality/IN, learned-range, null checks, FM-index full-text search, HNSW vector similarity (`ann`), and sparse vector match. Friendly aliases (`column` → `column_id`, `min`/`max` → `lo`/`hi`) are translated to the server's on-wire keys.
+- **Idempotent batch transactions** — operations staged locally and committed atomically, with the engine enforcing unique, foreign-key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
+- **Full SQL access** through the DataFusion-backed `/sql` endpoint: recursive CTEs, window functions, `CREATE TABLE AS SELECT`, materialized views, and multi-statement execution.
+- **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
+- **Maintenance**: compaction (all tables or per-table).
+- **Pluggable transport**: bring your own `java.net.http.HttpClient`. Bearer token and HTTP Basic auth are first-class options.
+- **Typed errors**: `AuthException` (401/403), `NotFoundException` (404), `ConflictException` (409, with error code + op index), and `QueryException` (everything else), all extending `MongrelDBException` and carrying the status code and decoded server envelope.
+
+## Install
+
+### Maven
+
+```xml
+<dependency>
+  <groupId>dev.visorcraft</groupId>
+  <artifactId>mongreldb-java</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+### Gradle
+
+```groovy
+implementation 'dev.visorcraft:mongreldb-java:0.1.0'
+```
+
+### Gradle (Kotlin DSL)
+
+```kotlin
+implementation("dev.visorcraft:mongreldb-java:0.1.0")
+```
+
+The artifact has no runtime dependencies — only the Java standard library.
+
+## Quick start
+
+```java
+import dev.visorcraft.mongreldb.MongrelDB;
+import java.util.List;
+import java.util.Map;
+
+public class Example {
+    public static void main(String[] args) {
+        // Connect to a running mongreldb-server daemon.
+        MongrelDB db = new MongrelDB("http://127.0.0.1:8453");
+
+        // Create a table. Column ids are stable on-wire identifiers.
+        db.createTable("orders", List.of(
+            Map.of("id", 1, "name", "id",       "ty", "int64",   "primary_key", true,  "nullable", false),
+            Map.of("id", 2, "name", "customer", "ty", "varchar", "primary_key", false, "nullable", false),
+            Map.of("id", 3, "name", "amount",   "ty", "float64", "primary_key", false, "nullable", false)
+        ));
+
+        // Insert rows (cells map column id -> value).
+        db.put("orders", Map.of(1L, 1L, 2L, "Alice", 3L, 99.50), null);
+        db.put("orders", Map.of(1L, 2L, 2L, "Bob",   3L, 150.00), null);
+
+        // Upsert (insert or update on PK conflict).
+        db.upsert("orders",
+            Map.of(1L, 1L, 2L, "Alice", 3L, 120.00),
+            Map.of(3L, 120.00), null);
+
+        // Query with a native index condition (learned-range index).
+        List<Map<String, Object>> rows = db.query("orders")
+            .where("range", Map.of("column", 3L, "min", 100.0))
+            .projection(List.of(1L, 2L))
+            .limit(100)
+            .execute();
+        System.out.println("rows: " + rows.size());
+
+        long n = db.count("orders");
+        System.out.println("count: " + n); // 2
+
+        // Run SQL.
+        db.sql("UPDATE orders SET amount = 200.0 WHERE customer = 'Bob'");
+    }
+}
+```
+
+## Authentication
+
+```java
+// Bearer token (--auth-token mode)
+MongrelDB db = new MongrelDB("http://127.0.0.1:8453", "my-secret-token", null, null);
+
+// HTTP Basic (--auth-users mode)
+MongrelDB db = new MongrelDB("http://127.0.0.1:8453", null, "admin", "s3cret");
+
+// Default URL (http://127.0.0.1:8453) when url is null/empty
+MongrelDB db = new MongrelDB(null);
+
+// Custom HttpClient (timeouts, transport, etc.)
+HttpClient http = HttpClient.newBuilder()
+    .connectTimeout(Duration.ofSeconds(60))
+    .build();
+MongrelDB db = new MongrelDB("http://127.0.0.1:8453", null, null, null, http);
+```
+
+A bearer token takes precedence over basic-auth credentials when both are supplied.
+
+## Batch transactions
+
+Operations are staged locally and committed atomically. The engine enforces
+unique, foreign-key, and check constraints at commit time.
+
+```java
+Transaction txn = db.begin();
+txn.put("orders", Map.of(1L, 10L, 2L, "Dave", 3L, 50.00), false);
+txn.put("orders", Map.of(1L, 11L, 2L, "Eve",  3L, 75.00), false);
+txn.deleteByPk("orders", 2L);
+
+try {
+    List<Map<String, Object>> results = txn.commit(null); // atomic — all or nothing
+} catch (ConflictException e) {
+    // A constraint violation rolled back every op.
+    System.out.printf("duplicate: %s at op %d%n", e.code(), e.opIndex());
+    txn.rollback(); // discard locally as well
+}
+
+// Idempotent commit — safe to retry; the daemon returns the original response.
+Transaction txn2 = db.begin();
+txn2.put("orders", Map.of(1L, 20L, 2L, "Frank", 3L, 100.00), false);
+txn2.commit("order-20-create");
+```
+
+A `Transaction` is single-use: calling `commit` or `rollback` twice throws
+`IllegalStateException`. Create a fresh one with `db.begin()` for each batch.
+
+## Native query builder
+
+Conditions push down to the engine's specialized indexes. The builder accepts
+friendly aliases that are translated to the server's on-wire keys: `column`
+(→ `column_id`), `min`/`max` (→ `lo`/`hi`). The canonical keys are also
+accepted directly.
+
+```java
+// Bitmap equality (low-cardinality columns).
+db.query("orders")
+    .where("bitmap_eq", Map.of("column", 2L, "value", "Alice"))
+    .execute();
+
+// Range query (learned-range index).
+db.query("orders")
+    .where("range", Map.of("column", 3L, "min", 50.0, "max", 150.0))
+    .limit(100).execute();
+
+// Full-text search (FM-index).
+db.query("documents")
+    .where("fm_contains", Map.of("column", 2L, "pattern", "database performance"))
+    .limit(10).execute();
+
+// Vector similarity search (HNSW).
+db.query("embeddings")
+    .where("ann", Map.of("column", 2L, "query", new double[]{0.1, 0.2, 0.3}, "k", 10))
+    .execute();
+
+// Check whether a result was capped by the limit.
+QueryBuilder q = db.query("orders")
+    .where("range", Map.of("column", 3L, "min", 0L))
+    .limit(100);
+List<Map<String, Object>> rows = q.execute();
+if (q.truncated()) {
+    // result set hit the limit; more matches exist on the server
+}
+```
+
+## SQL
+
+```java
+db.sql("INSERT INTO orders (id, customer, amount) VALUES (99, 'Zoe', 999.0)");
+db.sql("CREATE TABLE archive AS SELECT * FROM orders WHERE amount > 500");
+
+// Recursive CTEs and window functions
+db.sql("WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r WHERE n<10) SELECT n FROM r");
+db.sql("SELECT id, ROW_NUMBER() OVER (PARTITION BY customer ORDER BY amount DESC) FROM orders");
+```
+
+The `/sql` endpoint generally streams Arrow IPC bytes for `SELECT`s; `sql()`
+decodes JSON row sets when the daemon returns them and returns an empty list
+otherwise (DDL/DML or binary bodies).
+
+## Error handling
+
+Every non-2xx response is mapped to a typed exception. Catch the specific
+subclass for the category, or catch `MongrelDBException` to handle any failure.
+Each carries the HTTP status code and the server's decoded error envelope
+(`code`, `opIndex`).
+
+```java
+try {
+    db.schemaFor("missing_table");
+} catch (NotFoundException e) {
+    System.out.println("not found: " + e.getMessage());
+} catch (AuthException e) {
+    System.out.println("not authorized: " + e.getMessage());
+} catch (ConflictException e) {
+    System.out.printf("constraint %s at op %d%n", e.code(), e.opIndex());
+} catch (QueryException e) {
+    System.out.println("query/server error: " + e.getMessage() + " (status " + e.status() + ")");
+}
+
+// Or inspect directly on the base type:
+try {
+    db.schemaFor("missing_table");
+} catch (MongrelDBException e) {
+    System.out.printf("status=%d code=%s msg=%s%n", e.status(), e.code(), e.getMessage());
+    // e.g. status=404 code=NOT_FOUND msg=no such table
+}
+```
+
+## API reference
+
+### `MongrelDB`
+
+| Method | Description |
+|--------|-------------|
+| `new MongrelDB(url)` | Construct a client (url defaults to `http://127.0.0.1:8453`) |
+| `new MongrelDB(url, token, user, pass)` | With Bearer token or Basic auth |
+| `new MongrelDB(url, token, user, pass, httpClient)` | With a custom `java.net.http.HttpClient` |
+| `health()` | Check daemon health |
+| `tableNames()` | List table names |
+| `createTable(name, columns)` | Create a table; returns the table id |
+| `dropTable(name)` | Drop a table |
+| `count(table)` | Row count |
+| `put(table, cells, idempotencyKey)` | Insert a row |
+| `upsert(table, cells, updateCells, key)` | Upsert a row |
+| `delete(table, rowId)` | Delete by row id |
+| `deleteByPK(table, pk)` | Delete by primary key |
+| `query(table)` | Start a native query |
+| `sql(sql)` | Execute SQL |
+| `schema()` | Full schema catalog |
+| `schemaFor(table)` | Single-table descriptor |
+| `compact()` | Compact all tables |
+| `compactTable(table)` | Compact one table |
+| `begin()` | Start a batch |
+
+### `QueryBuilder`
+
+| Method | Description |
+|--------|-------------|
+| `where(type, params)` | Add a native condition (AND-ed) |
+| `projection(columnIDs)` | Set column projection |
+| `limit(limit)` | Set row limit |
+| `build()` | Build the request payload |
+| `execute()` | Run the query |
+| `truncated()` | Whether the last `execute` result hit the limit |
+
+### `Transaction`
+
+| Method | Description |
+|--------|-------------|
+| `put(table, cells, returning)` | Stage an insert |
+| `upsert(table, cells, updateCells, returning)` | Stage an upsert |
+| `delete(table, rowId)` | Stage a delete by row id |
+| `deleteByPk(table, pk)` | Stage a delete by primary key |
+| `count()` | Number of staged operations |
+| `commit(idempotencyKey)` | Commit atomically |
+| `rollback()` | Discard all operations |
+
+### Exceptions
+
+| Exception | HTTP status | Meaning |
+|-----------|-------------|---------|
+| `MongrelDBException` | any | Base class for all client errors |
+| `AuthException` | 401, 403 | Bad or missing credentials |
+| `NotFoundException` | 404 | Missing table, schema, or resource |
+| `ConflictException` | 409 | Unique, FK, check, or trigger violation (carries `code` + `opIndex`) |
+| `QueryException` | 400, 5xx | Malformed query, server error, or transport failure |
+
+All exceptions extend `MongrelDBException` and expose `status()`, `code()`, and `opIndex()`.
+
+## Building and testing
+
+The test suite is a live integration suite: it boots a real `mongreldb-server`
+daemon and exercises the full client surface against it. It skips automatically
+when no daemon is available (uses JUnit 5's `@EnabledIfSystemProperty`).
+
+```sh
+# Compile and run the offline checks:
+mvn compile
+
+# Run the live suite. The harness boots mongreldb-server itself if it can find
+# the binary (in this order):
+#   1. the MONGRELDB_SERVER env var (path to the server binary)
+#   2. ./bin/mongreldb-server
+#   3. mongreldb-server on PATH
+# Or point it at an already-running daemon with MONGRELDB_URL.
+MONGRELDB_SERVER=./bin/mongreldb-server mvn test
+```
+
+Fetch a prebuilt server binary from the [MongrelDB releases](https://github.com/visorcraft/MongrelDB/releases):
+
+```sh
+mkdir -p bin
+curl -fsSL -o bin/mongreldb-server \
+  https://github.com/visorcraft/MongrelDB/releases/download/v0.43.3/mongreldb-server-linux-x64
+chmod +x bin/mongreldb-server
+```
+
+## Contributing
+
+Contributions are welcome. Please:
+
+1. Open an issue first for non-trivial changes.
+2. Add focused tests near your change — the suite must stay green.
+3. Keep the client dependency-free (Java standard library only).
+
+## License
+
+Dual-licensed under the **MIT License** or the **Apache License, Version 2.0**,
+at your option. See [LICENSE](LICENSE) for the full text of both licenses.
+
+`SPDX-License-Identifier: MIT OR Apache-2.0`
