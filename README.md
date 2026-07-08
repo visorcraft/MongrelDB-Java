@@ -9,23 +9,11 @@ No external dependencies — built on the standard library `java.net.http.HttpCl
 [![Java](https://img.shields.io/badge/Java-11%2B-blue.svg)](https://openjdk.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-## Requirements
+## Package
 
-- **Java 11 or newer**
-- A running [`mongreldb-server`](https://github.com/visorcraft/MongrelDB) daemon
-
-## What It Provides
-
-- **Typed CRUD** over the Kit transaction endpoint: `put`, `upsert` (insert-or-update on PK conflict), `delete` by row id or primary key, all with optional idempotency keys for safe retries.
-- **Fluent query builder** that pushes conditions down to the engine's specialized indexes for sub-millisecond lookups: bitmap equality/IN, learned-range, null checks, FM-index full-text search, HNSW vector similarity (`ann`), and sparse vector match. Friendly aliases (`column` → `column_id`, `min`/`max` → `lo`/`hi`) are translated to the server's on-wire keys.
-- **Idempotent batch transactions** — operations staged locally and committed atomically, with the engine enforcing unique, foreign-key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
-- **Full SQL access** through the DataFusion-backed `/sql` endpoint: recursive CTEs, window functions, `CREATE TABLE AS SELECT`, materialized views, and multi-statement execution.
-- **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
-- **Maintenance**: compaction (all tables or per-table).
-- **Pluggable transport**: bring your own `java.net.http.HttpClient`. Bearer token and HTTP Basic auth are first-class options.
-- **Typed errors**: `AuthException` (401/403), `NotFoundException` (404), `ConflictException` (409, with error code + op index), and `QueryException` (everything else), all extending `MongrelDBException` and carrying the status code and decoded server envelope.
-
-## Install
+| Surface | Coordinates | Install |
+|---|---|---|
+| Java client | `dev.visorcraft:mongreldb-java:0.1.0` | Maven / Gradle snippets below |
 
 ### Maven
 
@@ -51,7 +39,35 @@ implementation("dev.visorcraft:mongreldb-java:0.1.0")
 
 The artifact has no runtime dependencies — only the Java standard library.
 
-## Quick start
+## Requirements
+
+- **Java 11 or newer**
+- A running [`mongreldb-server`](https://github.com/visorcraft/MongrelDB) daemon
+
+## What It Provides
+
+- **Typed CRUD** over the Kit transaction endpoint: `put`, `upsert` (insert-or-update on PK conflict), `delete` by row id or primary key, all with optional idempotency keys for safe retries.
+- **Fluent query builder** that pushes conditions down to the engine's specialized indexes for sub-millisecond lookups: bitmap equality/IN, learned-range, null checks, FM-index full-text search, HNSW vector similarity (`ann`), and sparse vector match. Friendly aliases (`column` → `column_id`, `min`/`max` → `lo`/`hi`) are translated to the server's on-wire keys.
+- **Idempotent batch transactions** — operations staged locally and committed atomically, with the engine enforcing unique, foreign-key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
+- **Full SQL access** through the DataFusion-backed `/sql` endpoint: recursive CTEs, window functions, `CREATE TABLE AS SELECT`, materialized views, and multi-statement execution.
+- **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
+- **User/role/credentials management** via SQL: Argon2id-hashed catalog users, roles, and `GRANT`/`REVOKE` table-level permissions, all executed through `sql`.
+- **Maintenance**: compaction (all tables or per-table).
+- **Pluggable transport**: bring your own `java.net.http.HttpClient`. Bearer token and HTTP Basic auth are first-class options.
+- **Typed errors**: `AuthException` (401/403), `NotFoundException` (404), `ConflictException` (409, with error code + op index), and `QueryException` (everything else), all extending `MongrelDBException` and carrying the status code and decoded server envelope.
+
+## Examples
+
+Task-focused, commented guides live in [`docs/`](docs):
+
+- [Quickstart](docs/quickstart.md) — install, start the daemon, write and run a complete program.
+- [Transactions](docs/transactions.md) — batch commits, idempotency keys, constraint handling.
+- [Queries](docs/queries.md) — every native condition type and the index it pushes down to.
+- [SQL](docs/sql.md) — recursive CTEs, window functions, advanced SQL.
+- [Authentication](docs/auth.md) — Bearer token, HTTP Basic, and open modes.
+- [Errors](docs/errors.md) — the exception hierarchy and recovery patterns.
+
+## Quick Example
 
 ```java
 import dev.visorcraft.mongreldb.MongrelDB;
@@ -197,6 +213,23 @@ db.sql("SELECT id, ROW_NUMBER() OVER (PARTITION BY customer ORDER BY amount DESC
 The `/sql` endpoint generally streams Arrow IPC bytes for `SELECT`s; `sql()`
 decodes JSON row sets when the daemon returns them and returns an empty list
 otherwise (DDL/DML or binary bodies).
+
+## User & role management
+
+User, role, and permission management is performed through SQL against the
+daemon's catalog. Passwords are Argon2id-hashed server-side.
+
+```java
+db.sql("CREATE USER admin WITH PASSWORD 's3cret-pw'");
+db.sql("ALTER USER admin SET ADMIN TRUE");
+
+db.sql("CREATE ROLE analyst");
+db.sql("GRANT select ON orders TO analyst"); // table-level permission
+db.sql("GRANT analyst TO alice");
+
+db.sql("SELECT username FROM catalog.users"); // list users
+db.sql("SELECT name FROM catalog.roles");     // list roles
+```
 
 ## Error handling
 
