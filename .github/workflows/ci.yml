@@ -93,9 +93,9 @@ jobs:
         run: |
           mkdir -p /tmp/ex-classes
           find examples -name "*.java" -print0 | xargs -0 javac -cp target/classes -d /tmp/ex-classes
-          for cls in BasicCrud QueryBuilderExample TransactionsExample; do
+          for cls in com.example.BasicCrud com.example.QueryBuilderExample com.example.TransactionsExample; do
             echo "=== Running $cls ==="
-            java -cp "target/classes:/tmp/ex-classes" $cls || { echo "FAILED: $cls"; exit 1; }
+            java -cp "target/classes:/tmp/ex-classes" "$cls" || { echo "FAILED: $cls"; exit 1; }
           done
 
       - name: Dump server log on failure
