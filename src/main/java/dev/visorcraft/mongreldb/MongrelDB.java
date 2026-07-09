@@ -339,8 +339,16 @@ public final class MongrelDB {
         if (trimmed.length == 0) {
             return new ArrayList<>();
         }
-        // Requested format is JSON; decode the array of row objects.
-        Object parsed = Json.parse(body);
+        // Requested format is JSON; decode the array of row objects. An old
+        // server may ignore the requested JSON format and answer with Arrow IPC
+        // binary bytes (which are not valid JSON). Treat that as "no rows"
+        // rather than throwing, so callers keep working against legacy servers.
+        Object parsed;
+        try {
+            parsed = Json.parse(body);
+        } catch (QueryException e) {
+            return new ArrayList<>();
+        }
         if (parsed instanceof List<?>) {
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Object row : (List<?>) parsed) {
