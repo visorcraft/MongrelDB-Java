@@ -89,6 +89,15 @@ jobs:
       - name: Run live tests
         run: mvn -B -ntp test
 
+      - name: Run examples
+        run: |
+          mkdir -p /tmp/ex-classes
+          javac -cp target/classes -d /tmp/ex-classes examples/*.java
+          for cls in BasicCrud QueryBuilderExample TransactionsExample; do
+            echo "=== Running $cls ==="
+            java -cp "target/classes:/tmp/ex-classes" $cls || { echo "FAILED: $cls"; exit 1; }
+          done
+
       - name: Dump server log on failure
         if: failure()
         run: cat /tmp/mongreldb-server.log
