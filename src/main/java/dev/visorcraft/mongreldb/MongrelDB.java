@@ -197,7 +197,7 @@ public final class MongrelDB {
                 return ((Number) c).longValue();
             }
         }
-        return 0L;
+        throw new QueryException("mongreldb: malformed count response");
     }
 
     // ── CRUD (via the Kit typed transaction endpoint) ─────────────────────
@@ -624,7 +624,9 @@ public final class MongrelDB {
         StringBuilder b = new StringBuilder(seg.length());
         for (int i = 0; i < seg.length(); i++) {
             char c = seg.charAt(i);
-            if (c == '/' || c == '-' || c == '_' || c == '.' || c == '~'
+            // Only RFC 3986 unreserved characters pass through unescaped.
+            // '/' is encoded so a table name cannot inject an extra path segment.
+            if (c == '-' || c == '_' || c == '.' || c == '~'
                     || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
                     || (c >= '0' && c <= '9')) {
                 b.append(c);
@@ -787,7 +789,17 @@ public final class MongrelDB {
                 sb.append(']');
             } else if (v instanceof String) {
                 writeString(sb, (String) v);
-            } else if (v instanceof Boolean || v instanceof Number) {
+            } else if (v instanceof Boolean) {
+                sb.append(v.toString());
+            } else if (v instanceof Float || v instanceof Double) {
+                double d = ((Number) v).doubleValue();
+                // NaN and Infinity have no valid JSON representation; emit null.
+                if (Double.isNaN(d) || Double.isInfinite(d)) {
+                    sb.append("null");
+                } else {
+                    sb.append(v.toString());
+                }
+            } else if (v instanceof Number) {
                 sb.append(v.toString());
             } else if (v instanceof Character) {
                 writeString(sb, v.toString());

@@ -42,6 +42,12 @@ public final class Transaction {
         this.client = client;
     }
 
+    private void ensureOpen() {
+        if (committed) {
+            throw new IllegalStateException(ALREADY_COMMITTED);
+        }
+    }
+
     /**
      * Stages an insert. {@code returning}, when {@code true}, asks the daemon to
      * echo the row in the per-operation result.
@@ -52,6 +58,7 @@ public final class Transaction {
      * @return this transaction, for chaining
      */
     public Transaction put(String table, Map<Long, ?> cells, boolean returning) {
+        ensureOpen();
         Objects.requireNonNull(table, "table");
         Objects.requireNonNull(cells, "cells");
         Map<String, Object> op = new LinkedHashMap<>();
@@ -77,6 +84,7 @@ public final class Transaction {
      */
     public Transaction upsert(String table, Map<Long, ?> cells,
                               Map<Long, ?> updateCells, boolean returning) {
+        ensureOpen();
         Objects.requireNonNull(table, "table");
         Objects.requireNonNull(cells, "cells");
         Map<String, Object> op = new LinkedHashMap<>();
@@ -100,6 +108,7 @@ public final class Transaction {
      * @return this transaction, for chaining
      */
     public Transaction delete(String table, long rowId) {
+        ensureOpen();
         Objects.requireNonNull(table, "table");
         Map<String, Object> op = new LinkedHashMap<>();
         Map<String, Object> del = new LinkedHashMap<>();
@@ -118,6 +127,7 @@ public final class Transaction {
      * @return this transaction, for chaining
      */
     public Transaction deleteByPk(String table, Object pk) {
+        ensureOpen();
         Objects.requireNonNull(table, "table");
         Objects.requireNonNull(pk, "pk");
         Map<String, Object> op = new LinkedHashMap<>();
