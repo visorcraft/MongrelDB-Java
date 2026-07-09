@@ -172,6 +172,8 @@ class MongrelDBLiveTest {
                 .where("pk", Map.of("value", 42L))
                 .execute();
         assertEquals(1, rows.size(), "expected exactly 1 row");
+        // The returned row must carry the queried PK value.
+        assertEquals(42L, cellLong(rows.get(0), 1L), "expected pk 42");
     }
 
     @Test
@@ -190,8 +192,15 @@ class MongrelDBLiveTest {
         QueryBuilder q = db.query(name)
                 .where("range", Map.of("column", 2L, "min", 100L, "max", 150L));
         List<Map<String, Object>> rows = q.execute();
-        assertFalse(rows.isEmpty(), "range query should return at least 1 row");
+        // Only the row with amount=120 (pk=2) falls in [100, 150].
+        assertEquals(1, rows.size(), "range query should return exactly the matching row");
         assertFalse(q.truncated(), "result should not be truncated");
+        // Verify the PK and amount values of returned rows match the filter range.
+        for (Map<String, Object> row : rows) {
+            assertEquals(2L, cellLong(row, 1L), "expected returned pk 2");
+            long amt = cellLong(row, 2L);
+            assertTrue(amt >= 100 && amt <= 150, "returned amount " + amt + " outside range [100,150]");
+        }
     }
 
     @Test
@@ -245,13 +254,21 @@ class MongrelDBLiveTest {
 
     @Test
     @Order(9)
-    @DisplayName("sql runs a statement without error")
+    @DisplayName("sql INSERT increases count and SELECT returns the row")
     void testSQL() {
         requireDaemon();
-        // SELECT 1 yields no JSON rows (the daemon streams Arrow IPC), so we
-        // just assert it runs without error.
-        List<Map<String, Object>> rows = db.sql("SELECT 1");
-        assertNotNull(rows, "sql should return a non-null list");
+        String name = uniqueTable("java_sql");
+        freshTable(name, intCol(1, "id", true), intCol(2, "amount", false));
+
+        assertEquals(0L, db.count(name), "expected 0 rows");
+        // INSERT via SQL must increase the row count.
+        db.sql("INSERT INTO " + name + " (id, amount) VALUES (10, 42)");
+        assertEquals(1L, db.count(name), "count must increase after INSERT");
+
+        // JSON SQL mode must return the inserted row.
+        List<Map<String, Object>> rows = db.sql("SELECT id, amount FROM " + name);
+        assertEquals(1, rows.size(), "expected 1 row from JSON SELECT");
+        assertEquals(10L, ((Number) rows.get(0).get("id")).longValue(), "expected id 10");
     }
 
     @Test
@@ -340,6 +357,9 @@ class MongrelDBLiveTest {
                 .where("pk", Map.of("value", 1L))
                 .execute();
         assertEquals(1, rows.size(), "expected the upserted row");
+        // Assert the updated cell value and the PK.
+        assertEquals(1L, cellLong(rows.get(0), 1L), "expected pk 1");
+        assertEquals(999L, cellLong(rows.get(0), 2L), "expected updated amount 999");
     }
 
     @Test
@@ -440,6 +460,29 @@ class MongrelDBLiveTest {
             m.put(((Number) kv[i]).longValue(), kv[i + 1]);
         }
         return m;
+    }
+
+    /**
+     * Extracts a long value for {@code colID} from a Kit row's flat cells array
+     * (shape: {@code [col_id, value, ...]}).
+     */
+    private static long cellLong(Map<String, Object> row, long colID) {
+        Object cellsObj = row.get("cells");
+        if (cellsObj instanceof List<?>) {
+            List<?> cells = (List<?>) cellsObj;
+            for (int i = 0; i + 1 < cells.size(); i += 2) {
+                Object id = cells.get(i);
+                if (id instanceof Number && ((Number) id).longValue() == colID) {
+                    Object v = cells.get(i + 1);
+                    if (v instanceof Number) {
+                        return ((Number) v).longValue();
+                    }
+                    fail("cell " + colID + " value not numeric: " + v);
+                }
+            }
+        }
+        fail("cell " + colID + " not found in row " + row);
+        return 0L;
     }
 
     private Map<String, Object> intCol(long id, String name, boolean primaryKey) {

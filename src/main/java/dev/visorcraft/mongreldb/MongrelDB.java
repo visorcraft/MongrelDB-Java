@@ -41,6 +41,13 @@ public final class MongrelDB {
     /** The daemon address used when none is supplied. */
     public static final String DEFAULT_BASE_URL = "http://127.0.0.1:8453";
 
+    /**
+     * Maximum response body size (256 MB). Bodies larger than this are aborted
+     * with a {@link QueryException} to guard client memory against a malicious
+     * or buggy server.
+     */
+    public static final int MAX_RESPONSE_BYTES = 268435456;
+
     private final String baseURL;
     private final String token;
     private final String username;
@@ -313,10 +320,10 @@ public final class MongrelDB {
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**
-     * Executes a SQL statement via the {@code /sql} endpoint. When the daemon
-     * returns a JSON result set, the rows are decoded and returned; for
-     * statements that yield no rows (DDL/DML) or a non-JSON (Arrow IPC) body, it
-     * returns an empty list and a {@code null} (absent) error.
+     * Executes a SQL statement via the {@code /sql} endpoint, requesting JSON
+     * output. The server returns a JSON array of row objects keyed by column
+     * name, e.g. {@code [{"id": 1, "name": "Alice", "score": 95.5}]}. For
+     * statements that yield no rows (DDL/DML), it returns an empty list.
      *
      * @param sql the SQL statement
      * @return the decoded rows, or an empty list
@@ -326,32 +333,26 @@ public final class MongrelDB {
         Objects.requireNonNull(sql, "sql");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sql", sql);
+        payload.put("format", "json");
         byte[] body = post("/sql", payload);
         byte[] trimmed = trim(body);
         if (trimmed.length == 0) {
             return new ArrayList<>();
         }
-        // The /sql endpoint generally streams Arrow IPC bytes for SELECTs; only
-        // decode when the body is actually JSON to avoid noise.
-        byte first = trimmed[0];
-        if (first == '{' || first == '[') {
-            Object parsed = Json.parse(body);
-            if (parsed instanceof List<?>) {
-                List<Map<String, Object>> rows = new ArrayList<>();
-                for (Object row : (List<?>) parsed) {
-                    if (row instanceof Map<?, ?>) {
-                        rows.add((Map<String, Object>) row);
-                    } else {
-                        rows.add(new LinkedHashMap<>());
-                    }
+        // Requested format is JSON; decode the array of row objects.
+        Object parsed = Json.parse(body);
+        if (parsed instanceof List<?>) {
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Object row : (List<?>) parsed) {
+                if (row instanceof Map<?, ?>) {
+                    rows.add((Map<String, Object>) row);
+                } else {
+                    rows.add(new LinkedHashMap<>());
                 }
-                return rows;
             }
-            // A single JSON object (e.g. an error envelope) is not a row set.
-            if (parsed instanceof Map<?, ?>) {
-                return new ArrayList<>();
-            }
+            return rows;
         }
+        // A single JSON object (e.g. an error envelope) is not a row set.
         return new ArrayList<>();
     }
 
@@ -513,6 +514,10 @@ public final class MongrelDB {
         }
 
         byte[] data = resp.body() == null ? new byte[0] : resp.body();
+        if (data.length > MAX_RESPONSE_BYTES) {
+            throw new QueryException("mongreldb: response body exceeds maximum size of "
+                    + MAX_RESPONSE_BYTES + " bytes");
+        }
         int status = resp.statusCode();
         if (status < 200 || status >= 300) {
             throw toException(status, data);
