@@ -27,12 +27,16 @@ import dev.visorcraft.mongreldb.MongrelDB;
 public class BasicCrud {
 
     private static final String URL = "http://127.0.0.1:8453";
-    private static final String TABLE = "example_crud";
 
     public static void main(String[] args) {
         // 1. Connect (the default constructor targets http://127.0.0.1:8453).
         MongrelDB db = new MongrelDB(URL);
 
+        // Unique name per run so re-running the example never collides with a
+        // leftover table from a previous (possibly failed) run.
+        String table = "example_crud_" + System.currentTimeMillis();
+
+        try {
         // 2. Health check; bail out if the daemon is unreachable.
         if (!db.health()) {
             System.err.println("daemon not reachable at " + URL);
@@ -41,22 +45,22 @@ public class BasicCrud {
         System.out.println("Connected to MongrelDB");
 
         // 3. Create the table. Schema: id (int64 PK), name (varchar), score (float64).
-        long tableId = db.createTable(TABLE, List.of(
+        long tableId = db.createTable(table, List.of(
                 column(1L, "id", "int64", true),
                 column(2L, "name", "varchar", false),
                 column(3L, "score", "float64", false)));
-        System.out.printf("Created table %s (id %d)%n", TABLE, tableId);
+        System.out.printf("Created table %s (id %d)%n", table, tableId);
 
         // 4. Insert three rows. Cells map column id (Long) -> value.
-        db.put(TABLE, cells(1L, 1L, 2L, "Alice", 3L, 95.5), null);
-        db.put(TABLE, cells(1L, 2L, 2L, "Bob", 3L, 82.0), null);
-        db.put(TABLE, cells(1L, 3L, 2L, "Carol", 3L, 78.3), null);
+        db.put(table, cells(1L, 1L, 2L, "Alice", 3L, 95.5), null);
+        db.put(table, cells(1L, 2L, 2L, "Bob", 3L, 82.0), null);
+        db.put(table, cells(1L, 3L, 2L, "Carol", 3L, 78.3), null);
         System.out.println("Inserted 3 rows");
 
-        System.out.printf("Total rows: %d%n", db.count(TABLE));
+        System.out.printf("Total rows: %d%n", db.count(table));
 
         // 5. Query all rows (no conditions).
-        List<Map<String, Object>> all = db.query(TABLE).execute();
+        List<Map<String, Object>> all = db.query(table).execute();
         System.out.printf("Query returned %d rows:%n", all.size());
         for (Map<String, Object> row : all) {
             System.out.printf("  %s%n", row);
@@ -64,19 +68,20 @@ public class BasicCrud {
 
         // 6. Upsert (update) Alice's score. updateCells supplies the values
         //    written on a primary-key conflict.
-        db.upsert(TABLE,
+        db.upsert(table,
                 cells(1L, 1L, 2L, "Alice", 3L, 100.0),
                 cells(2L, "Alice", 3L, 100.0), null);
         System.out.println("Upserted Alice's score to 100.0");
-        System.out.printf("Total rows after upsert: %d%n", db.count(TABLE));
+        System.out.printf("Total rows after upsert: %d%n", db.count(table));
 
         // 7. Delete Carol (primary key 3).
-        db.deleteByPK(TABLE, 3L);
-        System.out.printf("Deleted Carol; remaining rows: %d%n", db.count(TABLE));
-
-        // 8. Cleanup.
-        db.dropTable(TABLE);
-        System.out.printf("Dropped table %s%n", TABLE);
+        db.deleteByPK(table, 3L);
+        System.out.printf("Deleted Carol; remaining rows: %d%n", db.count(table));
+        } finally {
+            // Always clean up, even if something above threw.
+            db.dropTable(table);
+            System.out.printf("Dropped table %s%n", table);
+        }
     }
 
     /** Builds a column descriptor Map for createTable. */

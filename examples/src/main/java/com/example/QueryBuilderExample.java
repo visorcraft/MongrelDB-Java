@@ -26,34 +26,39 @@ import dev.visorcraft.mongreldb.MongrelDB;
 public class QueryBuilderExample {
 
     private static final String URL = "http://127.0.0.1:8453";
-    private static final String TABLE = "example_query";
 
     public static void main(String[] args) {
         MongrelDB db = new MongrelDB(URL);
+
+        // Unique name per run so re-running the example never collides with a
+        // leftover table from a previous (possibly failed) run.
+        String table = "example_query_" + System.currentTimeMillis();
+
+        try {
         if (!db.health()) {
             System.err.println("daemon not reachable at " + URL);
             System.exit(1);
         }
         System.out.println("Connected to MongrelDB");
 
-        db.createTable(TABLE, java.util.List.of(
+        db.createTable(table, java.util.List.of(
                 column(1L, "id", "int64", true),
                 column(2L, "name", "varchar", false),
                 column(3L, "score", "float64", false)));
-        System.out.printf("Created table %s%n", TABLE);
+        System.out.printf("Created table %s%n", table);
 
         // Five rows with varying scores.
-        db.put(TABLE, cells(1L, 1L, 2L, "Alice", 3L, 40.0), null);
-        db.put(TABLE, cells(1L, 2L, 2L, "Bob", 3L, 65.0), null);
-        db.put(TABLE, cells(1L, 3L, 2L, "Carol", 3L, 82.0), null);
-        db.put(TABLE, cells(1L, 4L, 2L, "Dave", 3L, 91.0), null);
-        db.put(TABLE, cells(1L, 5L, 2L, "Eve", 3L, 12.5), null);
+        db.put(table, cells(1L, 1L, 2L, "Alice", 3L, 40.0), null);
+        db.put(table, cells(1L, 2L, 2L, "Bob", 3L, 65.0), null);
+        db.put(table, cells(1L, 3L, 2L, "Carol", 3L, 82.0), null);
+        db.put(table, cells(1L, 4L, 2L, "Dave", 3L, 91.0), null);
+        db.put(table, cells(1L, 5L, 2L, "Eve", 3L, 12.5), null);
         System.out.println("Inserted 5 rows");
 
         // Range condition: scores in [60.0, 90.0]. "column" maps to column_id,
         // so pass the numeric column id (3L), not the name. Use range_f64
         // because the score column is float64 (plain range expects i64).
-        List<Map<String, Object>> rng = db.query(TABLE)
+        List<Map<String, Object>> rng = db.query(table)
                 .where("range_f64", Map.of(
                         "column", 3L,
                         "min", 60.0, "max", 90.0,
@@ -65,16 +70,18 @@ public class QueryBuilderExample {
         }
 
         // Primary-key condition: fetch the single row with id == 4.
-        List<Map<String, Object>> pk = db.query(TABLE)
+        List<Map<String, Object>> pk = db.query(table)
                 .where("pk", Map.of("value", 4L))
                 .execute();
         System.out.printf("PK query (id == 4) returned %d rows:%n", pk.size());
         for (Map<String, Object> row : pk) {
             System.out.printf("  %s%n", row);
         }
-
-        db.dropTable(TABLE);
-        System.out.printf("Dropped table %s%n", TABLE);
+        } finally {
+            // Always clean up, even if something above threw.
+            db.dropTable(table);
+            System.out.printf("Dropped table %s%n", table);
+        }
     }
 
     private static Map<String, Object> column(long id, String name, String ty, boolean pk) {

@@ -28,51 +28,61 @@ import dev.visorcraft.mongreldb.Transaction;
 public class TransactionsExample {
 
     private static final String URL = "http://127.0.0.1:8453";
-    private static final String TABLE = "example_txn";
 
     public static void main(String[] args) {
         MongrelDB db = new MongrelDB(URL);
+
+        // Unique name per run so re-running the example never collides with a
+        // leftover table from a previous (possibly failed) run.
+        String table = "example_txn_" + System.currentTimeMillis();
+        // Idempotency key unique per run, reused for both commits below so the
+        // duplicate commit replays the original result (no double-apply).
+        String key = "example-txn-" + System.currentTimeMillis();
+
+        try {
         if (!db.health()) {
             System.err.println("daemon not reachable at " + URL);
             System.exit(1);
         }
         System.out.println("Connected to MongrelDB");
 
-        db.createTable(TABLE, java.util.List.of(
+        db.createTable(table, java.util.List.of(
                 column(1L, "id", "int64", true),
                 column(2L, "name", "varchar", false),
                 column(3L, "score", "float64", false)));
-        System.out.printf("Created table %s%n", TABLE);
+        System.out.printf("Created table %s%n", table);
 
         // Stage three puts and commit them atomically. Either every op lands
         // or none do; a constraint violation rolls back the whole batch.
         Transaction txn = db.begin();
-        txn.put(TABLE, cells(1L, 1L, 2L, "Alice", 3L, 95.5), false);
-        txn.put(TABLE, cells(1L, 2L, 2L, "Bob", 3L, 82.0), false);
-        txn.put(TABLE, cells(1L, 3L, 2L, "Carol", 3L, 78.3), false);
+        txn.put(table, cells(1L, 1L, 2L, "Alice", 3L, 95.5), false);
+        txn.put(table, cells(1L, 2L, 2L, "Bob", 3L, 82.0), false);
+        txn.put(table, cells(1L, 3L, 2L, "Carol", 3L, 78.3), false);
         System.out.printf("Staged %d operations%n", txn.count());
 
         List<Map<String, Object>> results = txn.commit(null);
         System.out.printf("Committed atomically: %d operations applied%n", results.size());
 
-        System.out.printf("Verified row count after commit: %d%n", db.count(TABLE));
+        System.out.printf("Verified row count after commit: %d%n", db.count(table));
 
         // Idempotent retry: stage the same batch again with an idempotency key,
         // then commit a second time with the SAME key. The daemon replays the
         // original result and applies no extra rows.
         Transaction retry = db.begin();
-        retry.put(TABLE, cells(1L, 4L, 2L, "Dave", 3L, 60.0), false);
-        retry.commit("example-txn-key");
-        System.out.printf("After first idempotent commit: %d rows%n", db.count(TABLE));
+        retry.put(table, cells(1L, 4L, 2L, "Dave", 3L, 60.0), false);
+        retry.commit(key);
+        System.out.printf("After first idempotent commit: %d rows%n", db.count(table));
 
         Transaction retry2 = db.begin();
-        retry2.put(TABLE, cells(1L, 4L, 2L, "Dave", 3L, 60.0), false);
-        retry2.commit("example-txn-key");
+        retry2.put(table, cells(1L, 4L, 2L, "Dave", 3L, 60.0), false);
+        retry2.commit(key);
         System.out.printf("After duplicate idempotent commit (same key): %d rows (no double-apply)%n",
-                db.count(TABLE));
-
-        db.dropTable(TABLE);
-        System.out.printf("Dropped table %s%n", TABLE);
+                db.count(table));
+        } finally {
+            // Always clean up, even if something above threw.
+            db.dropTable(table);
+            System.out.printf("Dropped table %s%n", table);
+        }
     }
 
     private static Map<String, Object> column(long id, String name, String ty, boolean pk) {
