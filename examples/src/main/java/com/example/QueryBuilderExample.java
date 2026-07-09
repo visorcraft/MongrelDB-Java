@@ -51,9 +51,13 @@ public class QueryBuilderExample {
         System.out.println("Inserted 5 rows");
 
         // Range condition: scores in [60.0, 90.0]. "column" maps to column_id,
-        // so pass the numeric column id (3L), not the name.
+        // so pass the numeric column id (3L), not the name. Use range_f64
+        // because the score column is float64 (plain range expects i64).
         List<Map<String, Object>> rng = db.query(TABLE)
-                .where("range", Map.of("column", 3L, "min", 60.0, "max", 90.0))
+                .where("range_f64", Map.of(
+                        "column", 3L,
+                        "min", 60.0, "max", 90.0,
+                        "min_inclusive", true, "max_inclusive", true))
                 .execute();
         System.out.printf("Range query (score in [60,90]) returned %d rows:%n", rng.size());
         for (Map<String, Object> row : rng) {
