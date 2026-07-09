@@ -92,7 +92,7 @@ jobs:
       - name: Run examples
         run: |
           mkdir -p /tmp/ex-classes
-          javac -cp target/classes -d /tmp/ex-classes examples/*.java
+          find examples -name "*.java" -print0 | xargs -0 javac -cp target/classes -d /tmp/ex-classes
           for cls in BasicCrud QueryBuilderExample TransactionsExample; do
             echo "=== Running $cls ==="
             java -cp "target/classes:/tmp/ex-classes" $cls || { echo "FAILED: $cls"; exit 1; }
