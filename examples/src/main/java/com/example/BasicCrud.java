@@ -21,8 +21,9 @@ import dev.visorcraft.mongreldb.MongrelDB;
  * {@code http://127.0.0.1:8453}.
  *
  * <p>Creates a table, inserts three rows, counts them, queries all rows,
- * upserts (updates) one row by primary key, deletes one row, then drops the
- * table. Progress is printed at every step.
+ * upserts (updates) one row by primary key, deletes one row, then demonstrates
+ * enum and default-value column specs, then drops the table. Progress is
+ * printed at every step.
  */
 public class BasicCrud {
 
@@ -77,6 +78,41 @@ public class BasicCrud {
         // 7. Delete Carol (primary key 3).
         db.deleteByPK(table, 3L);
         System.out.printf("Deleted Carol; remaining rows: %d%n", db.count(table));
+
+        // 8. Enum + default value. createTable forwards every column-spec key
+        //    the caller puts in the Map to /kit/create_table. The engine
+        //    recognises `enum_variants` (required when ty is "enum") and
+        //    `default_value` (per-column default discriminator, e.g. "now").
+        String enumTable = "example_enum_" + System.currentTimeMillis();
+        try {
+            Map<String, Object> role = new LinkedHashMap<>();
+            role.put("id", 2L);
+            role.put("name", "role");
+            role.put("ty", "enum");
+            role.put("primary_key", false);
+            role.put("nullable", false);
+            role.put("enum_variants", List.of("admin", "user", "guest"));
+            role.put("default_value", "guest");
+
+            Map<String, Object> createdAt = new LinkedHashMap<>();
+            createdAt.put("id", 3L);
+            createdAt.put("name", "created_at");
+            createdAt.put("ty", "timestamp_nanos");
+            createdAt.put("primary_key", false);
+            createdAt.put("nullable", false);
+            createdAt.put("default_value", "now");
+
+            db.createTable(enumTable, List.of(
+                    Map.of("id", 1L, "name", "id", "ty", "int64",
+                            "primary_key", true, "nullable", false),
+                    role,
+                    createdAt));
+            System.out.printf("Created enum table %s%n", enumTable);
+        } finally {
+            // Always clean up, even if something above threw.
+            db.dropTable(enumTable);
+            System.out.printf("Dropped table %s%n", enumTable);
+        }
         } finally {
             // Always clean up, even if something above threw.
             db.dropTable(table);

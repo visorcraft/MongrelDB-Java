@@ -120,6 +120,73 @@ public class Example {
 }
 ```
 
+## Enum, default, and CHECK constraints
+
+`createTable` forwards every column-spec key the caller puts in the `Map` to
+the daemon's `/kit/create_table` endpoint. The engine recognises
+`enum_variants` (required for `ty: "enum"`), `default_value` (per-column
+default discriminator, e.g. `"now"` or `"uuid"`), and a top-level
+`constraints` block (unique / foreign-key / check).
+
+```java
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+Map<String, Object> status = new LinkedHashMap<>();
+status.put("id", 2L);
+status.put("name", "status");
+status.put("ty", "enum");
+status.put("primary_key", false);
+status.put("nullable", false);
+status.put("enum_variants", List.of("draft", "active", "archived"));
+status.put("default_value", "draft");
+
+Map<String, Object> createdAt = new LinkedHashMap<>();
+createdAt.put("id", 3L);
+createdAt.put("name", "created_at");
+createdAt.put("ty", "timestamp_nanos");
+createdAt.put("primary_key", false);
+createdAt.put("nullable", false);
+createdAt.put("default_value", "now");
+
+db.createTable("orders", List.of(
+    Map.of("id", 1L, "name", "id", "ty", "int64", "primary_key", true, "nullable", false),
+    status,
+    createdAt));
+```
+
+`enum_variants` arrives at the engine as a JSON array of strings, in order;
+`default_value` arrives as a JSON string. The current `createTable(String,
+List<Map<String,Object>>)` signature forwards both keys verbatim, so no
+client-side rename is needed. CHECK constraints (regex, range, equality,
+boolean composition) live in the same request body's `constraints` block -
+the on-wire shape is:
+
+```json
+{
+  "name": "users",
+  "columns": [
+    { "id": 1, "name": "id",       "ty": "int64",          "primary_key": true,  "nullable": false },
+    { "id": 2, "name": "role",     "ty": "enum",           "enum_variants": ["admin", "user"], "default_value": "user" },
+    { "id": 3, "name": "email",    "ty": "varchar" }
+  ],
+  "constraints": {
+    "checks": [
+      {
+        "id": 1,
+        "name": "email_format",
+        "expr": { "regex": { "col": 3, "pattern": "^[^@]+@[^@]+$", "negated": false, "case_insensitive": true } }
+      }
+    ]
+  }
+}
+```
+
+The Java client's typed `createTable` does not yet expose a `constraints`
+parameter, so regex / range / FK CHECKs are wired through the engine's
+`/kit/create_table` payload by hand from callers that need them today.
+
 ## Authentication
 
 ```java

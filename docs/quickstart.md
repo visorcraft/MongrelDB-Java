@@ -167,7 +167,85 @@ row: {2=Bob}
 total rows: 2
 ```
 
-## 5. What each part does
+## 5. Enum, default value, and CHECK constraints
+
+`createTable(name, columns)` forwards every key in each column `Map` straight
+to the daemon's `/kit/create_table` endpoint. The engine recognises a small
+set of optional keys on top of `id`, `name`, `ty`, `primary_key`, `nullable`:
+
+| Key | Type | Effect |
+|-----|------|--------|
+| `enum_variants` | `List<String>` | Required when `ty` is `"enum"`. Ordered list of allowed values. |
+| `default_value` | `String` | Per-column default discriminator. The engine maps `"now"` to the current timestamp and `"uuid"` to a generated UUID v4; other strings are rejected with a `BAD_REQUEST` error. |
+
+Both arrive on the wire verbatim - the codec does not rename or strip them.
+
+```java
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import dev.visorcraft.mongreldb.MongrelDB;
+
+// Connect, health-check (see §4 above).
+MongrelDB db = new MongrelDB("http://127.0.0.1:8453");
+
+// Enum column with three allowed values and a default.
+Map<String, Object> role = new LinkedHashMap<>();
+role.put("id", 2L);
+role.put("name", "role");
+role.put("ty", "enum");
+role.put("primary_key", false);
+role.put("nullable", false);
+role.put("enum_variants", List.of("admin", "user", "guest"));
+role.put("default_value", "guest");
+
+// Timestamp column that fills in "now" on insert.
+Map<String, Object> createdAt = new LinkedHashMap<>();
+createdAt.put("id", 3L);
+createdAt.put("name", "created_at");
+createdAt.put("ty", "timestamp_nanos");
+createdAt.put("primary_key", false);
+createdAt.put("nullable", false);
+createdAt.put("default_value", "now");
+
+db.createTable("users", List.of(
+        Map.of("id", 1L, "name", "id", "ty", "int64",
+                "primary_key", true, "nullable", false),
+        role,
+        createdAt));
+```
+
+### CHECK constraints (regex, range, equality)
+
+CHECK constraints - including regex, range, equality, and boolean composition -
+live in a top-level `constraints` block on the same `/kit/create_table` payload:
+
+```json
+{
+  "name": "users",
+  "columns": [
+    { "id": 1, "name": "id",    "ty": "int64",          "primary_key": true,  "nullable": false },
+    { "id": 2, "name": "email", "ty": "varchar" }
+  ],
+  "constraints": {
+    "checks": [
+      {
+        "id": 1,
+        "name": "email_format",
+        "expr": { "regex": { "col": 2, "pattern": "^[^@]+@[^@]+$", "negated": false, "case_insensitive": true } }
+      }
+    ]
+  }
+}
+```
+
+The Java client's typed `createTable(String, List<Map<String, Object>>)`
+signatures accept only the column list today. Callers that need regex / range
+/ FK CHECKs today must hand-build the full JSON payload against the
+`/kit/create_table` endpoint - the column map above is the canonical reference
+for the wire shape.
+
+## 6. What each part does
 
 | Code | What it does |
 |------|--------------|
@@ -181,7 +259,7 @@ total rows: 2
 | `.execute()` | Sends the query and decodes the `rows` list. |
 | `db.count(table)` | GET `/tables/{name}/count`. |
 
-## 6. Common pitfalls
+## 7. Common pitfalls
 
 **Using the column name instead of the column id.** Every on-wire API uses
 the numeric `id` from `createTable`, never the `name`. The query builder's
