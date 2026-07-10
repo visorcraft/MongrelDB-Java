@@ -265,14 +265,10 @@ class MongrelDBLiveTest {
         db.sql("INSERT INTO " + name + " (id, amount) VALUES (10, 42)");
         assertEquals(1L, db.count(name), "count must increase after INSERT");
 
-        // JSON SQL mode must return the inserted row. An old server ignores the
-        // requested JSON format and answers with Arrow IPC bytes, so sql()
-        // returns an empty list - only verify row content when JSON mode worked.
+        // JSON SQL mode must return the inserted row.
         List<Map<String, Object>> rows = db.sql("SELECT id, amount FROM " + name);
-        if (!rows.isEmpty()) {
-            assertEquals(1, rows.size(), "expected 1 row from JSON SELECT");
-            assertEquals(10L, ((Number) rows.get(0).get("id")).longValue(), "expected id 10");
-        }
+        assertEquals(1, rows.size(), "expected 1 row from JSON SELECT");
+        assertEquals(10L, ((Number) rows.get(0).get("id")).longValue(), "expected id 10");
     }
 
     @Test
