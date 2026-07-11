@@ -407,13 +407,48 @@ class MongrelDBLiveTest {
         assertFalse(db.tableNames().contains(name), "table should be gone after drop");
     }
 
+    @Test
+    @Order(19)
+    @DisplayName("history retention window preserves older epoch reads")
+    void testHistoryRetention() {
+        requireDaemon();
+
+        db.setHistoryRetentionEpochs(10_000L);
+        assertEquals(10_000L, db.historyRetentionEpochs(),
+                "retention window should be updated");
+
+        String name = uniqueTable("java_retention");
+        freshTable(name, intCol(1, "id", true), intCol(2, "value", false));
+
+        db.put(name, cells(1L, 1L, 2L, 10L), null);
+        long writeEpoch = db.lastCommitEpoch();
+        assertTrue(writeEpoch > 0L, "commit should report a positive epoch");
+
+        db.upsert(name, cells(1L, 1L, 2L, 10L), cells(2L, 20L), null);
+
+        List<Map<String, Object>> oldRows = db.sql(
+                "SELECT value FROM " + name + " AS OF EPOCH " + writeEpoch + " WHERE id = 1");
+        assertEquals(1, oldRows.size(), "historical read should return the row");
+        assertEquals(10L, ((Number) oldRows.get(0).get("value")).longValue(),
+                "older epoch should see the pre-update value");
+
+        List<Map<String, Object>> curRows = db.sql(
+                "SELECT value FROM " + name + " WHERE id = 1");
+        assertEquals(1, curRows.size(), "current read should return the row");
+        assertEquals(20L, ((Number) curRows.get(0).get("value")).longValue(),
+                "current read should see the updated value");
+
+        assertTrue(db.earliestRetainedEpoch() <= writeEpoch,
+                "the write epoch should still be retained");
+    }
+
     /**
      * A standalone sanity test that always runs (no daemon needed): a client
      * constructed with no reachable server reports {@code health() == false}
      * rather than throwing.
      */
     @Test
-    @Order(19)
+    @Order(20)
     @DisplayName("health() returns false when the daemon is unreachable (offline)")
     void testHealthReturnsFalseWhenUnreachable() {
         MongrelDB unreachable = new MongrelDB("http://127.0.0.1:1");
@@ -425,7 +460,7 @@ class MongrelDBLiveTest {
      * attaches a Bearer header. Verified against an in-process server.
      */
     @Test
-    @Order(20)
+    @Order(21)
     @DisplayName("bearer-token auth header is attached (offline, in-process server)")
     void testAuthOptionIsApplied() throws Exception {
         AtomicReference<String> lastAuth = new AtomicReference<>();

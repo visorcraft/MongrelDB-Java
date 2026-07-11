@@ -176,8 +176,8 @@ set of optional keys on top of `id`, `name`, `ty`, `primary_key`, `nullable`:
 | Key | Type | Effect |
 |-----|------|--------|
 | `enum_variants` | `List<String>` | Required when `ty` is `"enum"`. Ordered list of allowed values. |
-| `default_value` | JSON scalar | Static per-column default. |
-| `default_expr` | `String` | Dynamic default: `"now"` or `"uuid"`. |
+| `default_value` | JSON scalar | Static per-column default. Preserve the scalar type: `"draft"`, `7L`, `true`, or an explicit `null`. |
+| `default_expr` | `String` | Dynamic default: `"now"` or `"uuid"`. Must be used instead of `default_value` for dynamic defaults. |
 
 All arrive on the wire verbatim - the codec does not rename or strip them.
 
@@ -209,11 +209,41 @@ createdAt.put("primary_key", false);
 createdAt.put("nullable", false);
 createdAt.put("default_expr", "now");
 
+// A literal string "now" is a static default, not a dynamic expression.
+Map<String, Object> literalNow = new LinkedHashMap<>();
+literalNow.put("id", 4L);
+literalNow.put("name", "literal_now");
+literalNow.put("ty", "varchar");
+literalNow.put("primary_key", false);
+literalNow.put("nullable", false);
+literalNow.put("default_value", "now");
+
+// Explicit JSON null default.
+Map<String, Object> nullableNote = new LinkedHashMap<>();
+nullableNote.put("id", 5L);
+nullableNote.put("name", "note");
+nullableNote.put("ty", "varchar");
+nullableNote.put("primary_key", false);
+nullableNote.put("nullable", true);
+nullableNote.put("default_value", null);
+
+// UUID dynamic default.
+Map<String, Object> uuidCol = new LinkedHashMap<>();
+uuidCol.put("id", 6L);
+uuidCol.put("name", "uuid_col");
+uuidCol.put("ty", "varchar");
+uuidCol.put("primary_key", false);
+uuidCol.put("nullable", false);
+uuidCol.put("default_expr", "uuid");
+
 db.createTable("users", List.of(
         Map.of("id", 1L, "name", "id", "ty", "int64",
                 "primary_key", true, "nullable", false),
         role,
-        createdAt));
+        createdAt,
+        literalNow,
+        nullableNote,
+        uuidCol));
 ```
 
 ### CHECK constraints (regex, range, equality)
@@ -240,13 +270,39 @@ live in a top-level `constraints` block on the same `/kit/create_table` payload:
 }
 ```
 
-The Java client's typed `createTable(String, List<Map<String, Object>>)`
-signatures accept only the column list today. Callers that need regex / range
-/ FK CHECKs today must hand-build the full JSON payload against the
-`/kit/create_table` endpoint - the column map above is the canonical reference
+The two-argument `createTable(String, List<Map<String, Object>>)` signature
+accepts only the column list today. Use the three-argument overload
+`createTable(name, columns, constraints)` to attach regex / range / FK CHECKs
+without hand-building JSON - the column map above is the canonical reference
 for the wire shape.
 
-## 6. What each part does
+## 6. History retention and time-travel reads
+
+Set the durable retention window before relying on historical snapshots:
+
+```java
+// Keep the last 10,000 epochs of history.
+db.setHistoryRetentionEpochs(10_000L);
+
+System.out.println("retention: " + db.historyRetentionEpochs());
+System.out.println("earliest:  " + db.earliestRetainedEpoch());
+```
+
+With retention configured, SQL `AS OF EPOCH` reads an older snapshot. This is
+useful for audit, rollback checks, or point-in-time analysis:
+
+```java
+// Insert a row, then update it later.
+db.sql("INSERT INTO orders (id, amount) VALUES (1, 10.0)");
+// ... after the row is updated to 20.0:
+db.sql("SELECT amount FROM orders AS OF EPOCH 42 WHERE id = 1");
+// returns the value as of epoch 42
+```
+
+The retention window is durable, admin-only, and cannot restore history that
+has already been pruned by a smaller window.
+
+## 7. What each part does
 
 | Code | What it does |
 |------|--------------|
@@ -260,7 +316,7 @@ for the wire shape.
 | `.execute()` | Sends the query and decodes the `rows` list. |
 | `db.count(table)` | GET `/tables/{name}/count`. |
 
-## 7. Common pitfalls
+## 8. Common pitfalls
 
 **Using the column name instead of the column id.** Every on-wire API uses
 the numeric `id` from `createTable`, never the `name`. The query builder's
@@ -299,7 +355,7 @@ the signal; use the native query builder for typed row retrieval.
 `--auth-token` or `--auth-users`, every call throws `AuthException` unless you
 construct the client with a token or Basic credentials. See [auth.md](auth.md).
 
-## Next steps
+## 9. Next steps
 
 - [transactions.md](transactions.md) - atomic batches, idempotency, retries
 - [queries.md](queries.md) - every native index condition

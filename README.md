@@ -4,8 +4,6 @@
 
 <h1 align="center">MongrelDB Java Client</h1>
 
-History retention: `setHistoryRetentionEpochs`, `historyRetentionEpochs`, and `earliestRetainedEpoch`.
-
 <p align="center">
   <b>Pure Java client for MongrelDB - embedded+server database with SQL, vector search, full-text search, and AI-native retrieval.</b>
   <br />
@@ -63,6 +61,9 @@ The artifact has no runtime dependencies - only the Java standard library.
 - **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
 - **User/role/credentials management** via SQL: Argon2id-hashed catalog users, roles, and `GRANT`/`REVOKE` table-level permissions, all executed through `sql`.
 - **Maintenance**: compaction (all tables or per-table).
+- **History retention**: configure the durable time-travel window with
+  `setHistoryRetentionEpochs`, and read historical snapshots via SQL
+  `AS OF EPOCH`.
 - **Pluggable transport**: bring your own `java.net.http.HttpClient`. Bearer token and HTTP Basic auth are first-class options.
 - **Typed errors**: `AuthException` (401/403), `NotFoundException` (404), `ConflictException` (409, with error code + op index), and `QueryException` (everything else), all extending `MongrelDBException` and carrying the status code and decoded server envelope.
 
@@ -130,6 +131,12 @@ the daemon's `/kit/create_table` endpoint. The engine recognises
 `default_expr` (`"now"` or `"uuid"`), and a top-level
 `constraints` block (unique / foreign-key / check).
 
+- `default_value` preserves its JSON scalar type. Use `"draft"` for a string,
+  `7L` for an integer, `true` for a boolean, and an explicit `null` value for
+  a JSON-null default.
+- A literal string `"now"` in `default_value` stays a literal string; dynamic
+  defaults must use `default_expr: "now"` (or `"uuid"`).
+
 ```java
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -191,6 +198,31 @@ the on-wire shape is:
 
 The three-argument `createTable` overload sends that `constraints` map
 unchanged. The two-argument overload remains source-compatible and omits it.
+
+## History retention and time-travel reads
+
+Set the database-wide retention window, in epochs, before relying on historical
+reads:
+
+```java
+db.setHistoryRetentionEpochs(10_000L);
+
+long window = db.historyRetentionEpochs();   // 10000
+long earliest = db.earliestRetainedEpoch();  // oldest still-readable epoch
+```
+
+With the window configured, SQL `AS OF EPOCH` reads an older snapshot. After
+updating a row, the value at the epoch of the original write remains readable:
+
+```java
+db.sql("INSERT INTO orders (id, amount) VALUES (1, 10.0)");
+// ... later, after the row is updated to 20.0:
+db.sql("SELECT amount FROM orders AS OF EPOCH 42 WHERE id = 1");
+// returns [{"amount": 10.0}]
+```
+
+The retention window is durable and admin-only. Increasing it cannot restore
+history that has already been pruned.
 
 ## Authentication
 
@@ -364,6 +396,9 @@ try {
 | `schemaFor(table)` | Single-table descriptor |
 | `compact()` | Compact all tables |
 | `compactTable(table)` | Compact one table |
+| `setHistoryRetentionEpochs(epochs)` | Set the durable time-travel window |
+| `historyRetentionEpochs()` | Current retention window, in epochs |
+| `earliestRetainedEpoch()` | Oldest epoch still retained |
 | `begin()` | Start a batch |
 
 ### `QueryBuilder`
@@ -404,8 +439,9 @@ All exceptions extend `MongrelDBException` and expose `status()`, `code()`, and 
 ## Building and testing
 
 The test suite is a live integration suite: it boots a real `mongreldb-server`
-daemon and exercises the full client surface against it. It skips automatically
-when no daemon is available (uses JUnit 5's `@EnabledIfSystemProperty`).
+daemon and exercises the full client surface against it. Live tests skip
+automatically when no daemon is available (using JUnit's `assumeTrue`); two
+offline sanity tests always run.
 
 ```sh
 # Compile and run the offline checks:

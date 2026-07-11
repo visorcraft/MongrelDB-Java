@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The MongrelDB HTTP client.
@@ -32,7 +33,8 @@ import java.util.Objects;
  *
  * <p>A {@code MongrelDB} instance is safe for concurrent use by multiple threads
  * once constructed: the underlying {@link HttpClient} is thread-safe and the
- * instance is immutable after configuration.
+ * configuration is immutable. The client atomically tracks the most recent
+ * {@code /kit/txn} commit epoch observed by this instance.
  *
  * @see <a href="https://www.MongrelDB.com">MongrelDB</a>
  */
@@ -53,6 +55,11 @@ public final class MongrelDB {
     private final String username;
     private final String password;
     private final HttpClient http;
+
+    // Epoch of the most recent /kit/txn commit observed by this client. Updated
+    // atomically on every successful commit. Used by the live test suite to pin
+    // an AS OF EPOCH read to the write epoch.
+    private final AtomicLong lastCommitEpoch = new AtomicLong(0L);
 
     /**
      * Constructs a client for the daemon at {@code url} with no authentication.
@@ -149,15 +156,45 @@ public final class MongrelDB {
         throw new QueryException("mongreldb: unexpected table-list response: " + Json.preview(body));
     }
 
+    /**
+     * Sets the database-wide history retention window, in epochs, and returns
+     * the updated {@code [history_retention_epochs, earliest_retained_epoch]}
+     * pair.
+     *
+     * @param epochs the number of epochs to retain
+     * @return a two-element array: retention window, then earliest retained epoch
+     */
     public long[] setHistoryRetentionEpochs(long epochs) {
         return parseHistoryRetention(put("/history/retention", Map.of("history_retention_epochs", epochs)));
     }
 
-    public long[] historyRetention() { return parseHistoryRetention(get("/history/retention")); }
-    public long historyRetentionEpochs() { return historyRetention()[0]; }
-    public long earliestRetainedEpoch() { return historyRetention()[1]; }
+    /**
+     * Returns the current history retention window, in epochs.
+     *
+     * @return the configured retention window
+     */
+    public long historyRetentionEpochs() {
+        return parseHistoryRetention(get("/history/retention"))[0];
+    }
+
+    /**
+     * Returns the earliest epoch that is still retained for time-travel reads.
+     *
+     * @return the earliest retained epoch
+     */
+    public long earliestRetainedEpoch() {
+        return parseHistoryRetention(get("/history/retention"))[1];
+    }
+
+    /** Package-visible test hook: returns the epoch reported by the most recent {@code /kit/txn} commit. */
+    long lastCommitEpoch() {
+        return lastCommitEpoch.get();
+    }
 
     private static long[] parseHistoryRetention(byte[] body) {
+        if (trim(body).length == 0) {
+            throw new QueryException("mongreldb: empty history retention response");
+        }
         Object parsed = Json.parse(body);
         if (parsed instanceof Map<?, ?>) {
             Map<?, ?> map = (Map<?, ?>) parsed;
@@ -339,7 +376,9 @@ public final class MongrelDB {
             payload.put("idempotency_key", idempotencyKey);
         }
         byte[] body = post("/kit/txn", payload);
-        return decodeResults(body);
+        TxnResponse resp = decodeResults(body);
+        lastCommitEpoch.set(resp.epoch);
+        return resp.results;
     }
 
     // ── Query ─────────────────────────────────────────────────────────────
@@ -508,7 +547,9 @@ public final class MongrelDB {
             payload.put("idempotency_key", idempotencyKey);
         }
         byte[] body = post("/kit/txn", payload);
-        return decodeResults(body);
+        TxnResponse resp = decodeResults(body);
+        lastCommitEpoch.set(resp.epoch);
+        return resp.results;
     }
 
     // ── HTTP plumbing ─────────────────────────────────────────────────────
@@ -601,17 +642,25 @@ public final class MongrelDB {
         return flat;
     }
 
-    // decodeResults pulls the results array out of a /kit/txn response.
+    // decodeResults pulls the epoch and results array out of a /kit/txn response.
     @SuppressWarnings("unchecked")
-    static List<Map<String, Object>> decodeResults(byte[] body) {
+    static TxnResponse decodeResults(byte[] body) {
         if (trim(body).length == 0) {
-            return new ArrayList<>();
+            return new TxnResponse(0L, new ArrayList<>());
         }
         Object parsed = Json.parse(body);
         if (!(parsed instanceof Map<?, ?>)) {
             throw new QueryException("mongreldb: decode txn response: unexpected JSON");
         }
-        Object results = ((Map<?, ?>) parsed).get("results");
+        Map<?, ?> root = (Map<?, ?>) parsed;
+        long epoch;
+        Object epochObj = root.get("epoch");
+        if (epochObj instanceof Number) {
+            epoch = ((Number) epochObj).longValue();
+        } else {
+            throw new QueryException("mongreldb: txn response missing epoch");
+        }
+        Object results = root.get("results");
         List<Map<String, Object>> out = new ArrayList<>();
         if (results instanceof List<?>) {
             for (Object r : (List<?>) results) {
@@ -622,7 +671,18 @@ public final class MongrelDB {
                 }
             }
         }
-        return out;
+        return new TxnResponse(epoch, out);
+    }
+
+    /** The parsed response of a {@code /kit/txn} commit. */
+    static final class TxnResponse {
+        final long epoch;
+        final List<Map<String, Object>> results;
+
+        TxnResponse(long epoch, List<Map<String, Object>> results) {
+            this.epoch = epoch;
+            this.results = results;
+        }
     }
 
     // firstResult returns the first element of results, or an empty map.
