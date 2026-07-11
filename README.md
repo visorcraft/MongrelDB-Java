@@ -124,8 +124,8 @@ public class Example {
 
 `createTable` forwards every column-spec key the caller puts in the `Map` to
 the daemon's `/kit/create_table` endpoint. The engine recognises
-`enum_variants` (required for `ty: "enum"`), `default_value` (per-column
-default discriminator, e.g. `"now"` or `"uuid"`), and a top-level
+`enum_variants` (required for `ty: "enum"`), scalar `default_value`, dynamic
+`default_expr` (`"now"` or `"uuid"`), and a top-level
 `constraints` block (unique / foreign-key / check).
 
 ```java
@@ -147,7 +147,7 @@ createdAt.put("name", "created_at");
 createdAt.put("ty", "timestamp_nanos");
 createdAt.put("primary_key", false);
 createdAt.put("nullable", false);
-createdAt.put("default_value", "now");
+createdAt.put("default_expr", "now");
 
 Map<String, Object> constraints = Map.of("checks", List.of(Map.of(
     "id", 1L,
@@ -161,7 +161,7 @@ db.createTable("orders", List.of(
 ```
 
 `enum_variants` arrives at the engine as a JSON array of strings, in order;
-`default_value` arrives as a JSON string. The current `createTable(String,
+`default_value` preserves its JSON scalar type. The current `createTable(String,
 List<Map<String,Object>>)` signature forwards both keys verbatim, so no
 client-side rename is needed. CHECK constraints (regex, range, equality,
 boolean composition) live in the same request body's `constraints` block -

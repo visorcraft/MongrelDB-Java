@@ -176,9 +176,10 @@ set of optional keys on top of `id`, `name`, `ty`, `primary_key`, `nullable`:
 | Key | Type | Effect |
 |-----|------|--------|
 | `enum_variants` | `List<String>` | Required when `ty` is `"enum"`. Ordered list of allowed values. |
-| `default_value` | `String` | Per-column default discriminator. The engine maps `"now"` to the current timestamp and `"uuid"` to a generated UUID v4; other strings are rejected with a `BAD_REQUEST` error. |
+| `default_value` | JSON scalar | Static per-column default. |
+| `default_expr` | `String` | Dynamic default: `"now"` or `"uuid"`. |
 
-Both arrive on the wire verbatim - the codec does not rename or strip them.
+All arrive on the wire verbatim - the codec does not rename or strip them.
 
 ```java
 import java.util.LinkedHashMap;
@@ -206,7 +207,7 @@ createdAt.put("name", "created_at");
 createdAt.put("ty", "timestamp_nanos");
 createdAt.put("primary_key", false);
 createdAt.put("nullable", false);
-createdAt.put("default_value", "now");
+createdAt.put("default_expr", "now");
 
 db.createTable("users", List.of(
         Map.of("id", 1L, "name", "id", "ty", "int64",

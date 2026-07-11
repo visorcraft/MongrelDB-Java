@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 class MongrelDBWireShapeTest {
 
     @Test
-    @DisplayName("createTable JSON body includes enum_variants and default_value verbatim")
+    @DisplayName("createTable preserves enum, static-default, and dynamic-default fields")
     void testCreateTableEmitsEnumVariantsAndDefaultValue() throws Exception {
         AtomicReference<byte[]> captured = new AtomicReference<>();
         HttpServer srv = newServer("/kit/create_table", captured,
@@ -42,8 +42,7 @@ class MongrelDBWireShapeTest {
             int port = srv.getAddress().getPort();
             MongrelDB db = new MongrelDB("http://127.0.0.1:" + port);
 
-            // Build a status column carrying both enum_variants and default_value,
-            // and a created_at column carrying only default_value = "now".
+            // Generic maps preserve both static scalar and dynamic defaults.
             Map<String, Object> status = new LinkedHashMap<>();
             status.put("id", 2L);
             status.put("name", "status");
@@ -58,7 +57,13 @@ class MongrelDBWireShapeTest {
             createdAt.put("ty", "timestamp_nanos");
             createdAt.put("primary_key", false);
             createdAt.put("nullable", false);
-            createdAt.put("default_value", "now");
+            createdAt.put("default_expr", "now");
+
+            Map<String, Object> attempts = new LinkedHashMap<>();
+            attempts.put("id", 4L);
+            attempts.put("name", "attempts");
+            attempts.put("ty", "int64");
+            attempts.put("default_value", 3L);
 
             Map<String, Object> constraints = Map.of("checks", List.of(Map.of(
                     "id", 1L,
@@ -68,7 +73,8 @@ class MongrelDBWireShapeTest {
                     Map.of("id", 1L, "name", "id", "ty", "int64",
                             "primary_key", true, "nullable", false),
                     status,
-                    createdAt), constraints);
+                    createdAt,
+                    attempts), constraints);
 
             assertEquals(42L, tableId, "stubbed table_id should be returned verbatim");
 
@@ -82,8 +88,10 @@ class MongrelDBWireShapeTest {
 
             Map<?, ?> statusWire = findColumn((List<?>) colsObj, "status");
             Map<?, ?> createdWire = findColumn((List<?>) colsObj, "created_at");
+            Map<?, ?> attemptsWire = findColumn((List<?>) colsObj, "attempts");
             assertNotNull(statusWire, "status column missing from request body: " + asString(body));
             assertNotNull(createdWire, "created_at column missing from request body: " + asString(body));
+            assertNotNull(attemptsWire, "attempts column missing from request body: " + asString(body));
 
             // enum_variants must appear as a JSON array of strings, in order.
             assertTrue(statusWire.containsKey("enum_variants"),
@@ -94,11 +102,10 @@ class MongrelDBWireShapeTest {
                     new ArrayList<>((List<?>) variants),
                     "enum_variants must appear verbatim, in order");
 
-            // default_value must appear as a JSON string on both columns.
-            assertTrue(createdWire.containsKey("default_value"),
-                    "default_value missing from created_at column: " + asString(body));
-            assertEquals("now", createdWire.get("default_value"),
-                    "default_value must appear verbatim");
+            assertEquals("now", createdWire.get("default_expr"),
+                    "default_expr must appear verbatim");
+            assertEquals(3L, attemptsWire.get("default_value"),
+                    "numeric default_value must preserve its JSON type");
 
             Object constraintsWire = ((Map<?, ?>) parsed).get("constraints");
             assertTrue(constraintsWire instanceof Map<?, ?>,
