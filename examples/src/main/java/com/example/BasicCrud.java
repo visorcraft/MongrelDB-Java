@@ -100,7 +100,7 @@ public class BasicCrud {
             createdAt.put("ty", "timestamp_nanos");
             createdAt.put("primary_key", false);
             createdAt.put("nullable", false);
-            createdAt.put("default_value", "now");
+            createdAt.put("default_expr", "now");
 
             db.createTable(enumTable, List.of(
                     Map.of("id", 1L, "name", "id", "ty", "int64",
