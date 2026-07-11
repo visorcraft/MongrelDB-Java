@@ -251,7 +251,7 @@ for the wire shape.
 |------|--------------|
 | `new MongrelDB(url)` | Builds an HTTP client targeting one daemon. Thread-safe once constructed. |
 | `db.health()` | GET `/health`; returns `true` when the daemon answers. Always check before real work. |
-| `db.createTable(name, columns)` | POST `/kit/create_table`. Column `id`s are the on-wire identifiers; use them everywhere else. |
+| `db.createTable(name, columns[, constraints])` | POST `/kit/create_table`; optional constraints map carries engine checks. Column `id`s are the on-wire identifiers; use them everywhere else. |
 | `db.put(table, cells, key)` | Single-op transaction: POST `/kit/txn` with one `put` op. `cells` is flattened to `[col_id, val, ...]`. |
 | `db.query(table).where(...)` | Builds a `/kit/query` body. `where` pushes a condition down to a native index. |
 | `.projection(List.of(1L, 2L))` | Server returns only those column ids, saving bandwidth. |

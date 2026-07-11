@@ -162,11 +162,28 @@ public final class MongrelDB {
      * @return the assigned table id
      */
     public long createTable(String name, List<Map<String, Object>> columns) {
+        return createTable(name, columns, null);
+    }
+
+    /**
+     * Creates a table and attaches engine constraints such as
+     * {@code Map.of("checks", List.of(...))}.
+     *
+     * @param name        the table name
+     * @param columns     the column descriptors
+     * @param constraints the top-level constraints object, or {@code null}
+     * @return the assigned table id
+     */
+    public long createTable(String name, List<Map<String, Object>> columns,
+            Map<String, Object> constraints) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(columns, "columns");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("name", name);
         payload.put("columns", columns);
+        if (constraints != null) {
+            payload.put("constraints", constraints);
+        }
         byte[] body = post("/kit/create_table", payload);
         Object parsed = body.length == 0 ? null : Json.parse(body);
         if (parsed instanceof Map<?, ?>) {

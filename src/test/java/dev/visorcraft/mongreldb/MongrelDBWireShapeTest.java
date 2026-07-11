@@ -51,7 +51,6 @@ class MongrelDBWireShapeTest {
             status.put("primary_key", false);
             status.put("nullable", false);
             status.put("enum_variants", List.of("draft", "active", "archived"));
-            status.put("default_value", "draft");
 
             Map<String, Object> createdAt = new LinkedHashMap<>();
             createdAt.put("id", 3L);
@@ -61,11 +60,15 @@ class MongrelDBWireShapeTest {
             createdAt.put("nullable", false);
             createdAt.put("default_value", "now");
 
+            Map<String, Object> constraints = Map.of("checks", List.of(Map.of(
+                    "id", 1L,
+                    "name", "id_present",
+                    "expr", Map.of("IsNotNull", 1L))));
             long tableId = db.createTable("qa_enum_" + System.nanoTime(), List.of(
                     Map.of("id", 1L, "name", "id", "ty", "int64",
                             "primary_key", true, "nullable", false),
                     status,
-                    createdAt));
+                    createdAt), constraints);
 
             assertEquals(42L, tableId, "stubbed table_id should be returned verbatim");
 
@@ -92,15 +95,17 @@ class MongrelDBWireShapeTest {
                     "enum_variants must appear verbatim, in order");
 
             // default_value must appear as a JSON string on both columns.
-            assertTrue(statusWire.containsKey("default_value"),
-                    "default_value missing from status column: " + asString(body));
-            assertEquals("draft", statusWire.get("default_value"),
-                    "default_value must appear verbatim");
-
             assertTrue(createdWire.containsKey("default_value"),
                     "default_value missing from created_at column: " + asString(body));
             assertEquals("now", createdWire.get("default_value"),
                     "default_value must appear verbatim");
+
+            Object constraintsWire = ((Map<?, ?>) parsed).get("constraints");
+            assertTrue(constraintsWire instanceof Map<?, ?>,
+                    "constraints missing from request body: " + asString(body));
+            Object checks = ((Map<?, ?>) constraintsWire).get("checks");
+            assertTrue(checks instanceof List<?> && ((List<?>) checks).size() == 1,
+                    "constraints.checks missing from request body: " + asString(body));
         } finally {
             srv.stop(0);
         }

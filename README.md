@@ -140,7 +140,6 @@ status.put("ty", "enum");
 status.put("primary_key", false);
 status.put("nullable", false);
 status.put("enum_variants", List.of("draft", "active", "archived"));
-status.put("default_value", "draft");
 
 Map<String, Object> createdAt = new LinkedHashMap<>();
 createdAt.put("id", 3L);
@@ -150,10 +149,15 @@ createdAt.put("primary_key", false);
 createdAt.put("nullable", false);
 createdAt.put("default_value", "now");
 
+Map<String, Object> constraints = Map.of("checks", List.of(Map.of(
+    "id", 1L,
+    "name", "id_present",
+    "expr", Map.of("IsNotNull", 1L))));
+
 db.createTable("orders", List.of(
     Map.of("id", 1L, "name", "id", "ty", "int64", "primary_key", true, "nullable", false),
     status,
-    createdAt));
+    createdAt), constraints);
 ```
 
 `enum_variants` arrives at the engine as a JSON array of strings, in order;
@@ -183,9 +187,8 @@ the on-wire shape is:
 }
 ```
 
-The Java client's typed `createTable` does not yet expose a `constraints`
-parameter, so regex / range / FK CHECKs are wired through the engine's
-`/kit/create_table` payload by hand from callers that need them today.
+The three-argument `createTable` overload sends that `constraints` map
+unchanged. The two-argument overload remains source-compatible and omits it.
 
 ## Authentication
 
@@ -346,7 +349,7 @@ try {
 | `new MongrelDB(url, token, user, pass, httpClient)` | With a custom `java.net.http.HttpClient` |
 | `health()` | Check daemon health |
 | `tableNames()` | List table names |
-| `createTable(name, columns)` | Create a table; returns the table id |
+| `createTable(name, columns[, constraints])` | Create a table, optionally attach engine constraints; returns the table id |
 | `dropTable(name)` | Drop a table |
 | `count(table)` | Row count |
 | `put(table, cells, idempotencyKey)` | Insert a row |
