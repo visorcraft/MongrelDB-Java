@@ -149,6 +149,27 @@ public final class MongrelDB {
         throw new QueryException("mongreldb: unexpected table-list response: " + Json.preview(body));
     }
 
+    public long[] setHistoryRetentionEpochs(long epochs) {
+        return parseHistoryRetention(put("/history/retention", Map.of("history_retention_epochs", epochs)));
+    }
+
+    public long[] historyRetention() { return parseHistoryRetention(get("/history/retention")); }
+    public long historyRetentionEpochs() { return historyRetention()[0]; }
+    public long earliestRetainedEpoch() { return historyRetention()[1]; }
+
+    private static long[] parseHistoryRetention(byte[] body) {
+        Object parsed = Json.parse(body);
+        if (parsed instanceof Map<?, ?>) {
+            Map<?, ?> map = (Map<?, ?>) parsed;
+            Object epochs = map.get("history_retention_epochs");
+            Object earliest = map.get("earliest_retained_epoch");
+            if (epochs instanceof Number && earliest instanceof Number) {
+                return new long[] {((Number) epochs).longValue(), ((Number) earliest).longValue()};
+            }
+        }
+        throw new QueryException("mongreldb: malformed history retention response");
+    }
+
     /**
      * Creates a table named {@code name} with the given columns and returns the
      * assigned table id.
@@ -495,6 +516,8 @@ public final class MongrelDB {
     byte[] get(String path) {
         return doRequest("GET", path, null);
     }
+
+    private byte[] put(String path, Object body) { return doRequest("PUT", path, body); }
 
     byte[] post(String path, Object body) {
         return doRequest("POST", path, body);

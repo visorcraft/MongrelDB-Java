@@ -4,6 +4,8 @@
 
 <h1 align="center">MongrelDB Java Client</h1>
 
+History retention: `setHistoryRetentionEpochs`, `historyRetentionEpochs`, and `earliestRetainedEpoch`.
+
 <p align="center">
   <b>Pure Java client for MongrelDB - embedded+server database with SQL, vector search, full-text search, and AI-native retrieval.</b>
   <br />

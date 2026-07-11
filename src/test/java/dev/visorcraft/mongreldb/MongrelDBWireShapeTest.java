@@ -64,6 +64,12 @@ class MongrelDBWireShapeTest {
             attempts.put("name", "attempts");
             attempts.put("ty", "int64");
             attempts.put("default_value", 3L);
+            Map<String, Object> flag = new LinkedHashMap<>();
+            flag.put("id", 5L); flag.put("name", "flag"); flag.put("ty", "bool"); flag.put("default_value", true);
+            Map<String, Object> note = new LinkedHashMap<>();
+            note.put("id", 6L); note.put("name", "note"); note.put("ty", "varchar"); note.put("default_value", null);
+            Map<String, Object> label = new LinkedHashMap<>();
+            label.put("id", 7L); label.put("name", "label"); label.put("ty", "varchar"); label.put("default_value", "draft");
 
             Map<String, Object> constraints = Map.of("checks", List.of(Map.of(
                     "id", 1L,
@@ -74,7 +80,7 @@ class MongrelDBWireShapeTest {
                             "primary_key", true, "nullable", false),
                     status,
                     createdAt,
-                    attempts), constraints);
+                    attempts, flag, note, label), constraints);
 
             assertEquals(42L, tableId, "stubbed table_id should be returned verbatim");
 
@@ -106,6 +112,10 @@ class MongrelDBWireShapeTest {
                     "default_expr must appear verbatim");
             assertEquals(3L, attemptsWire.get("default_value"),
                     "numeric default_value must preserve its JSON type");
+            String jsonBody = asString(body);
+            assertTrue(jsonBody.contains("\"default_value\":true"));
+            assertTrue(jsonBody.contains("\"default_value\":null"));
+            assertTrue(jsonBody.contains("\"default_value\":\"draft\""));
 
             Object constraintsWire = ((Map<?, ?>) parsed).get("constraints");
             assertTrue(constraintsWire instanceof Map<?, ?>,
