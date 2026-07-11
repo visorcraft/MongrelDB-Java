@@ -756,6 +756,10 @@ public final class MongrelDB {
             }
         }
 
+        if (message.startsWith("not found:")) {
+            return new NotFoundException(message, 404, code, opIndex);
+        }
+
         switch (status) {
             case 401:
             case 403:
