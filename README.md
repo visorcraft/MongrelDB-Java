@@ -429,6 +429,38 @@ curl -fsSL -o bin/mongreldb-server \
 chmod +x bin/mongreldb-server
 ```
 
+## Native embedding (Tier 1)
+
+For in-process access with zero serialization overhead, use the `NativeDB`
+class (in `dev.visorcraft.mongreldb.native_mode`). It loads the JNI shim
+(`libmongreldb_jni`) via `System.load()` and runs the engine directly in the
+JVM - no daemon needed.
+
+Download the prebuilt native library from the
+[MongrelDB releases](https://github.com/visorcraft/MongrelDB/releases) page
+(`mongreldb-jni-*.jar` or the `mongreldb-native-*` archives):
+
+```sh
+# Point at the directory containing libmongreldb_jni.so
+export MONGRELDB_NATIVE_DIR=/path/to/native/libs
+```
+
+```java
+import dev.visorcraft.mongreldb.native_mode.NativeDB;
+
+String schemaJson = "{\"tables\":[{\"id\":1,\"name\":\"users\",...}]}";
+
+try (NativeDB db = NativeDB.create("/path/to/dbdir", schemaJson)) {
+    db.sqlRows("INSERT INTO users (id, name) VALUES (1, 'alice')");
+    String rows = db.sqlRows("SELECT id, name FROM users");
+    byte[] arrow = db.sqlArrow("SELECT * FROM users");
+    db.migrate(migrationsJson);
+}
+```
+
+The HTTP client (`MongrelDB`) remains the default for connecting to a shared
+daemon. Use `NativeDB` when you want the embedded experience.
+
 ## Contributing
 
 Contributions are welcome. Please:
