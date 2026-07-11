@@ -108,3 +108,44 @@ jobs:
           if [ -f /tmp/mongreldb-server.pid ]; then
             kill "$(cat /tmp/mongreldb-server.pid)" 2>/dev/null || true
           fi
+
+  native:
+    # Tests the JNI embedded mode against the prebuilt libmongreldb_jni.
+    name: Native embedding (JNI)
+    runs-on: ubuntu-latest
+    env:
+      SERVER_VERSION: '0.48.0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Download JNI library
+        run: |
+          mkdir -p native-libs
+          curl -fsSL -o /tmp/jni.jar \
+            "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-jni-${SERVER_VERSION}-linux-x64.jar"
+          # Extract the native lib from the JAR
+          unzip -j /tmp/jni.jar "native/linux/x64/*" -d native-libs
+          ls -la native-libs/
+
+      - name: Build
+        run: mvn -B -ntp compile test-compile
+
+      - name: Run native tests
+        run: |
+          mvn -B -ntp test \
+            -DargLine="-Djava.library.path=$(pwd)/native-libs" \
+            -Dtest=NativeDBTest
+
+      - name: Run native example
+        run: |
+          mkdir -p /tmp/ex-classes
+          find examples -name "*.java" -print0 | xargs -0 javac -cp target/classes -d /tmp/ex-classes
+          MONGRELDB_NATIVE_DIR="$(pwd)/native-libs" \
+          java -cp "target/classes:/tmp/ex-classes" com.example.NativeBasicCrud

@@ -18,27 +18,15 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class NativeDBTest {
 
-    private static final String SCHEMA_JSON = """
-        {
-            "tables": [{
-                "id": 1,
-                "name": "users",
-                "columns": [
-                    {"id":1,"name":"id","storage_type":"int64","application_type":"int64","nullable":false,"primary_key":true,"default":null,"generated":false},
-                    {"id":2,"name":"name","storage_type":"text","application_type":"text","nullable":true,"primary_key":false,"default":null,"generated":false}
-                ],
-                "primary_key": ["id"]
-            }]
-        }
-        """;
+    private static final String SCHEMA_JSON =
+        "{\"tables\":[{\"id\":1,\"name\":\"users\"," +
+        "\"columns\":[" +
+        "{\"id\":1,\"name\":\"id\",\"storage_type\":\"int64\",\"application_type\":\"int64\",\"nullable\":false,\"primary_key\":true,\"default\":null,\"generated\":false}," +
+        "{\"id\":2,\"name\":\"name\",\"storage_type\":\"text\",\"application_type\":\"text\",\"nullable\":true,\"primary_key\":false,\"default\":null,\"generated\":false}" +
+        "],\"primary_key\":[\"id\"]}]}";
 
     private static boolean nativeAvailable() {
-        try {
-            NativeDB.class.getName(); // triggers static initializer
-            return true;
-        } catch (UnsatisfiedLinkError e) {
-            return false;
-        }
+        return NativeDB.nativeAvailable();
     }
 
     @Test
@@ -75,13 +63,9 @@ public class NativeDBTest {
         Assumptions.assumeTrue(nativeAvailable(), "native library not available");
 
         try (NativeDB db = NativeDB.create(tempDir.toString(), SCHEMA_JSON)) {
-            String migrations = """
-                [{
-                    "version": 1,
-                    "name": "add_orders",
-                    "ops": [{"raw_sql": "CREATE TABLE orders (id INT64 PRIMARY KEY, total FLOAT64)"}]
-                }]
-                """;
+            String migrations =
+                "[{\"version\":1,\"name\":\"add_orders\"," +
+                "\"ops\":[{\"raw_sql\":\"CREATE TABLE orders (id INT64 PRIMARY KEY, total FLOAT64)\"}]}]";
             db.migrate(migrations);
 
             // Insert into the migrated table.
@@ -100,9 +84,8 @@ public class NativeDBTest {
         try (NativeDB db = NativeDB.create(tempDir.toString(), SCHEMA_JSON)) {
             db.sqlRows("INSERT INTO users (id, name) VALUES (1, 'carol')");
 
-            String selectJson = """
-                {"table":"users","columns":[],"filter":null,"order_by":[],"limit":null,"offset":null}
-                """;
+            String selectJson =
+                "{\"table\":\"users\",\"columns\":[],\"filter\":null,\"order_by\":[],\"limit\":null,\"offset\":null}";
             String result = db.querySelect(selectJson);
             assertTrue(result.contains("carol"), "should contain 'carol': " + result);
         }
