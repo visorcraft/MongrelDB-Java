@@ -454,7 +454,6 @@ class MongrelDBLiveTest {
         MongrelDB unreachable = new MongrelDB("http://127.0.0.1:1");
         assertFalse(unreachable.health(), "health should be false for an unreachable daemon");
     }
-
     /**
      * A standalone test (no daemon needed): a client constructed with a token
      * attaches a Bearer header. Verified against an in-process server.
@@ -484,6 +483,52 @@ class MongrelDBLiveTest {
                     "expected Bearer auth header, got " + lastAuth.get());
         } finally {
             srv.stop(0);
+        }
+    }
+
+    /**
+     * Exercises the retention-floor lifecycle that the AS-of read test does not:
+     * shrinking the window must prune old epochs (the floor advances), and
+     * re-expanding must NOT bring the pruned history back (the floor never
+     * retreats).
+     */
+    @Test
+    @Order(22)
+    @DisplayName("shrinking retention prunes old epochs and re-expanding does not restore them")
+    void testHistoryRetentionShrinkAdvancesFloorAndDoesNotRestore() {
+        requireDaemon();
+
+        long initial = db.historyRetentionEpochs();
+        try {
+            // 1. Wide window so writes are retained well below the current epoch.
+            db.setHistoryRetentionEpochs(10_000L);
+            long wideFloor = db.earliestRetainedEpoch();
+
+            String name = uniqueTable("java_shrink");
+            freshTable(name, intCol(1, "id", true), intCol(2, "value", false));
+            db.put(name, cells(1L, 1L, 2L, 10L), null);
+            // Advance the epoch clock with a few writes so the narrow floor
+            // lands well above the wide floor.
+            for (int i = 0; i < 3; i++) {
+                db.put(name, cells(1L, (long) (100 + i), 2L, (long) i), null);
+            }
+
+            // 2. Shrink to a narrow window. The floor must advance (old epochs pruned).
+            db.setHistoryRetentionEpochs(1L);
+            long narrowFloor = db.earliestRetainedEpoch();
+            assertTrue(narrowFloor >= wideFloor,
+                    "narrow floor " + narrowFloor + " below wide floor " + wideFloor
+                            + " (floor should advance on shrink)");
+
+            // 3. Re-expand to the wide window. Pruned history must NOT come back:
+            // the floor cannot retreat below the narrow-window floor.
+            db.setHistoryRetentionEpochs(10_000L);
+            long reexpandedFloor = db.earliestRetainedEpoch();
+            assertTrue(reexpandedFloor >= narrowFloor,
+                    "re-expanded floor " + reexpandedFloor + " retreated below narrow floor "
+                            + narrowFloor + " (pruned history was restored)");
+        } finally {
+            db.setHistoryRetentionEpochs(initial);
         }
     }
 
