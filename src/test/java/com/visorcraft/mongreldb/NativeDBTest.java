@@ -1,6 +1,6 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
-import dev.visorcraft.mongreldb.native_mode.NativeDB;
+import com.visorcraft.mongreldb.native_mode.NativeDB;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

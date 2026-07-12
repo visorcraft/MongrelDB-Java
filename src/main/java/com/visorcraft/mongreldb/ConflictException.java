@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 /**
  * Raised for HTTP 409 responses - a unique, foreign-key, check, or trigger

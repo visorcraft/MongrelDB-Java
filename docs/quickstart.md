@@ -68,7 +68,7 @@ Add the dependency to `pom.xml`:
 
 ```xml
 <dependency>
-  <groupId>dev.visorcraft</groupId>
+  <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-java</artifactId>
   <version>0.1.0</version>
 </dependency>
@@ -85,7 +85,7 @@ Make sure your compiler targets Java 11 or newer:
 ### With Gradle
 
 ```groovy
-implementation 'dev.visorcraft:mongreldb-java:0.1.0'
+implementation 'com.visorcraft:mongreldb-java:0.1.0'
 ```
 
 ## 4. Write your first program
@@ -98,7 +98,7 @@ package com.example;
 import java.util.List;
 import java.util.Map;
 
-import dev.visorcraft.mongreldb.MongrelDB;
+import com.visorcraft.mongreldb.MongrelDB;
 
 public class Main {
     public static void main(String[] args) {
@@ -185,7 +185,7 @@ All arrive on the wire verbatim - the codec does not rename or strip them.
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import dev.visorcraft.mongreldb.MongrelDB;
+import com.visorcraft.mongreldb.MongrelDB;
 
 // Connect, health-check (see §4 above).
 MongrelDB db = new MongrelDB("http://127.0.0.1:8453");

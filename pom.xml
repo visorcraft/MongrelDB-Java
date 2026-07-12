@@ -5,7 +5,7 @@
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.visorcraft</groupId>
+    <groupId>com.visorcraft</groupId>
     <artifactId>mongreldb-java</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>

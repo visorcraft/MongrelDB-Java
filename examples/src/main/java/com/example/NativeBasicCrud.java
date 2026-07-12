@@ -1,6 +1,6 @@
 package com.example;
 
-import dev.visorcraft.mongreldb.native_mode.NativeDB;
+import com.visorcraft.mongreldb.native_mode.NativeDB;
 
 /**
  * Example: basic CRUD with the native embedded MongrelDB engine (Tier 1).

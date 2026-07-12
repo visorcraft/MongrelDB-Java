@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import dev.visorcraft.mongreldb.MongrelDB;
+import com.visorcraft.mongreldb.MongrelDB;
 
 /**
  * Example: basic CRUD operations with the MongrelDB Java client.

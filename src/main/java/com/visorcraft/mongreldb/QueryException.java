@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 /**
  * Raised for HTTP 400 or 5xx responses, and for any other request-level failure

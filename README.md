@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml"><img src="https://github.com/visorcraft/MongrelDB-Java/actions/workflows/ci.yml/badge.svg" alt="Java CI" /></a>
-  <a href="https://central.sonatype.com/artifact/dev.visorcraft/mongreldb-java"><img src="https://img.shields.io/maven-central/v/dev.visorcraft/mongreldb-java.svg?label=Maven%20Central" alt="Maven Central" /></a>
+  <a href="https://central.sonatype.com/artifact/com.visorcraft/mongreldb-java"><img src="https://img.shields.io/maven-central/v/com.visorcraft/mongreldb-java.svg?label=Maven%20Central" alt="Maven Central" /></a>
   <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-11%2B-blue.svg" alt="Java" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License" /></a>
 </p>
@@ -21,13 +21,13 @@
 
 | Surface | Coordinates | Install |
 |---|---|---|
-| Java client | `dev.visorcraft:mongreldb-java:0.1.0` | Maven / Gradle snippets below |
+| Java client | `com.visorcraft:mongreldb-java:0.1.0` | Maven / Gradle snippets below |
 
 ### Maven
 
 ```xml
 <dependency>
-  <groupId>dev.visorcraft</groupId>
+  <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-java</artifactId>
   <version>0.1.0</version>
 </dependency>
@@ -36,13 +36,13 @@
 ### Gradle
 
 ```groovy
-implementation 'dev.visorcraft:mongreldb-java:0.1.0'
+implementation 'com.visorcraft:mongreldb-java:0.1.0'
 ```
 
 ### Gradle (Kotlin DSL)
 
 ```kotlin
-implementation("dev.visorcraft:mongreldb-java:0.1.0")
+implementation("com.visorcraft:mongreldb-java:0.1.0")
 ```
 
 The artifact has no runtime dependencies - only the Java standard library.
@@ -81,7 +81,7 @@ Task-focused, commented guides live in [`docs/`](docs):
 ## Quick Example
 
 ```java
-import dev.visorcraft.mongreldb.MongrelDB;
+import com.visorcraft.mongreldb.MongrelDB;
 import java.util.List;
 import java.util.Map;
 
@@ -468,7 +468,7 @@ chmod +x bin/mongreldb-server
 ## Native embedding (Tier 1)
 
 For in-process access with zero serialization overhead, use the `NativeDB`
-class (in `dev.visorcraft.mongreldb.native_mode`). It loads the JNI shim
+class (in `com.visorcraft.mongreldb.native_mode`). It loads the JNI shim
 (`libmongreldb_jni`) via `System.load()` and runs the engine directly in the
 JVM - no daemon needed.
 
@@ -482,7 +482,7 @@ export MONGRELDB_NATIVE_DIR=/path/to/native/libs
 ```
 
 ```java
-import dev.visorcraft.mongreldb.native_mode.NativeDB;
+import com.visorcraft.mongreldb.native_mode.NativeDB;
 
 String schemaJson = "{\"tables\":[{\"id\":1,\"name\":\"users\",...}]}";
 

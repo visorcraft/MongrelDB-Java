@@ -209,7 +209,7 @@ txn.commit(null); // throws IllegalStateException - logic bug
 ## Quick reference
 
 ```java
-import dev.visorcraft.mongreldb.*;
+import com.visorcraft.mongreldb.*;
 
 // Type-based discrimination:
 try {

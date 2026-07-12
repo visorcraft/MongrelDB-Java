@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 import java.io.IOException;
 import java.net.URI;

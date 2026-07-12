@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 /**
  * Raised for HTTP 401 or 403 responses - bad or missing credentials.

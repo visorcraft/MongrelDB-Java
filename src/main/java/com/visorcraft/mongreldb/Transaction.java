@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

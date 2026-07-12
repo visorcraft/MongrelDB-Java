@@ -1,4 +1,4 @@
-package dev.visorcraft.mongreldb;
+package com.visorcraft.mongreldb;
 
 /**
  * Base class for all errors raised by the MongrelDB client.
