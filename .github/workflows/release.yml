@@ -1,0 +1,74 @@
+# Publishes mongreldb-java to Maven Central on a `v*` tag push.
+#
+# The release profile (defined in pom.xml) attaches sources + javadoc,
+# GPG-signs all artifacts, and uploads via the central-publishing-maven-plugin
+# (the Central Publishing Portal; OSSRH was sunset in 2025).
+#
+# Required secrets (configure in repo settings → Secrets and variables → Actions):
+#   CENTRAL_USERNAME  - Central Portal token username
+#   CENTRAL_PASSWORD  - Central Portal token password
+#   GPG_PRIVATE_KEY   - ASCII-armored GPG signing key (export --armor --export-secret-keys)
+#   GPG_KEY_ID        - Key ID (e.g. ABCDEF1234567890)
+#   GPG_PASSPHRASE    - Passphrase protecting the GPG key
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 11
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --dearmor --output /tmp/signing.gpg
+
+      - name: Configure Maven settings.xml
+        run: |
+          mkdir -p ~/.m2 /tmp/gpg-home
+          chmod 700 /tmp/gpg-home
+          cat > ~/.m2/settings.xml <<'XML'
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${env.CENTRAL_USERNAME}</username>
+                <password>${env.CENTRAL_PASSWORD}</password>
+              </server>
+            </servers>
+            <profiles>
+              <profile>
+                <id>gpg</id>
+                <properties>
+                  <gpg.executable>gpg</gpg.executable>
+                  <gpg.keyname>${env.GPG_KEY_ID}</gpg.keyname>
+                  <gpg.passphrase>${env.GPG_PASSPHRASE}</gpg.passphrase>
+                  <gpg.homedir>/tmp/gpg-home</gpg.homedir>
+                </properties>
+              </profile>
+            </profiles>
+          </settings>
+          XML
+          GNUPGHOME=/tmp/gpg-home gpg --batch --import /tmp/signing.gpg
+
+      - name: Deploy to Maven Central
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -ntp -Prelease deploy
