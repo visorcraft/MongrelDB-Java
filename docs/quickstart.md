@@ -31,7 +31,7 @@ Fetch a prebuilt server binary from the
 ```sh
 mkdir -p bin
 curl -fsSL -o bin/mongreldb-server \
-  https://github.com/visorcraft/MongrelDB/releases/download/v0.52.2/mongreldb-server-linux-x64
+  https://github.com/visorcraft/MongrelDB/releases/download/v0.52.3/mongreldb-server-linux-x64
 chmod +x bin/mongreldb-server
 ```
 
@@ -70,7 +70,7 @@ Add the dependency to `pom.xml`:
 <dependency>
   <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-java</artifactId>
-  <version>0.52.2</version>
+  <version>0.52.3</version>
 </dependency>
 ```
 
@@ -85,7 +85,7 @@ Make sure your compiler targets Java 11 or newer:
 ### With Gradle
 
 ```groovy
-implementation 'com.visorcraft:mongreldb-java:0.52.2'
+implementation 'com.visorcraft:mongreldb-java:0.52.3'
 ```
 
 ## 4. Write your first program
