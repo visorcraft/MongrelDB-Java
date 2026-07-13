@@ -35,6 +35,13 @@ import org.junit.jupiter.api.Test;
 class MongrelDBWireShapeTest {
 
     @Test
+    void queryBuilderIncludesOffset() {
+        Map<String, Object> payload = new QueryBuilder(null, "orders").limit(10).offset(12).build();
+        assertEquals(10L, payload.get("limit"));
+        assertEquals(12L, payload.get("offset"));
+    }
+
+    @Test
     @DisplayName("createTable preserves enum, static-default, and dynamic-default fields")
     void testCreateTableEmitsEnumVariantsAndDefaultValue() throws Exception {
         AtomicReference<byte[]> captured = new AtomicReference<>();

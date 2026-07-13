@@ -42,6 +42,7 @@ public final class QueryBuilder {
     private final List<Map<String, Object>> conditions = new ArrayList<>();
     private List<Long> projection;
     private Long limit;
+    private Long offset;
     private boolean lastTruncated;
 
     QueryBuilder(MongrelDB client, String table) {
@@ -104,6 +105,12 @@ public final class QueryBuilder {
         return this;
     }
 
+    /** Skips matching rows before applying the limit. */
+    public QueryBuilder offset(long offset) {
+        this.offset = offset;
+        return this;
+    }
+
     /**
      * Builds the request payload that will be sent to {@code /kit/query}.
      *
@@ -121,6 +128,9 @@ public final class QueryBuilder {
         }
         if (limit != null) {
             payload.put("limit", limit);
+        }
+        if (offset != null) {
+            payload.put("offset", offset);
         }
         return payload;
     }
