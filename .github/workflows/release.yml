@@ -60,6 +60,7 @@ jobs:
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
-        run: mvn -B -ntp -Prelease deploy \
-          -Dgpg.keyname=${{ secrets.GPG_KEY_ID }} \
-          -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mvn -B -ntp -Prelease deploy \
+            -Dgpg.keyname=${{ secrets.GPG_KEY_ID }} \
+            -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
