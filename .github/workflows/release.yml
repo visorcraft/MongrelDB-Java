@@ -36,11 +36,14 @@ jobs:
       - name: Import GPG signing key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --dearmor --output /tmp/signing.gpg
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          gpg --batch --import /tmp/signing.gpg
+          echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key ${{ secrets.GPG_KEY_ID }} trust
 
       - name: Configure Maven settings.xml
         run: |
-          mkdir -p ~/.m2 /tmp/gpg-home
-          chmod 700 /tmp/gpg-home
+          mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<'XML'
           <settings>
             <servers>
@@ -50,25 +53,13 @@ jobs:
                 <password>${env.CENTRAL_PASSWORD}</password>
               </server>
             </servers>
-            <profiles>
-              <profile>
-                <id>gpg</id>
-                <properties>
-                  <gpg.executable>gpg</gpg.executable>
-                  <gpg.keyname>${env.GPG_KEY_ID}</gpg.keyname>
-                  <gpg.passphrase>${env.GPG_PASSPHRASE}</gpg.passphrase>
-                  <gpg.homedir>/tmp/gpg-home</gpg.homedir>
-                </properties>
-              </profile>
-            </profiles>
           </settings>
           XML
-          GNUPGHOME=/tmp/gpg-home gpg --batch --import /tmp/signing.gpg
 
       - name: Deploy to Maven Central
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
-          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B -ntp -Prelease deploy
+        run: mvn -B -ntp -Prelease deploy \
+          -Dgpg.keyname=${{ secrets.GPG_KEY_ID }} \
+          -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
