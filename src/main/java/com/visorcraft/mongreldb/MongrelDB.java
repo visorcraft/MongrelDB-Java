@@ -394,6 +394,17 @@ public final class MongrelDB {
         return new QueryBuilder(this, table);
     }
 
+    /**
+     * Starts a fluent {@link SearchBuilder} against {@code table} (POST {@code /kit/search}).
+     *
+     * @param table the table to search
+     * @return a new hybrid search builder
+     */
+    public SearchBuilder search(String table) {
+        Objects.requireNonNull(table, "table");
+        return new SearchBuilder(this, table);
+    }
+
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**

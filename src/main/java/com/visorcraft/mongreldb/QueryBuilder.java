@@ -199,7 +199,8 @@ public final class QueryBuilder {
      *       NOT apply globally)
      * </ul>
      */
-    private static Map<String, Object> normalizeCondition(String condType, Map<String, ?> params) {
+    /** Package-private so {@link SearchBuilder} can reuse condition aliases. */
+    static Map<String, Object> normalizeCondition(String condType, Map<String, ?> params) {
         Map<String, Object> normalized = new LinkedHashMap<>(params.size());
         for (Map.Entry<String, ?> e : params.entrySet()) {
             String key = e.getKey();
