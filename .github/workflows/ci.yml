@@ -39,7 +39,9 @@ jobs:
     name: Live integration (against mongreldb-server)
     runs-on: ubuntu-latest
     env:
-      SERVER_VERSION: '0.55.0'
+      # Latest engine tag that still ships server + JNI native jars used here.
+      # Bump when newer tags publish mongreldb-jni-*-linux-x64.jar again.
+      SERVER_VERSION: '0.57.0'
       MONGRELDB_URL: http://127.0.0.1:8453
     steps:
       - name: Checkout
@@ -114,7 +116,9 @@ jobs:
     name: Native embedding (JNI)
     runs-on: ubuntu-latest
     env:
-      SERVER_VERSION: '0.55.0'
+      # Latest engine tag that still ships server + JNI native jars used here.
+      # Bump when newer tags publish mongreldb-jni-*-linux-x64.jar again.
+      SERVER_VERSION: '0.57.0'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
