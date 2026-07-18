@@ -8,6 +8,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -644,11 +645,20 @@ public final class MongrelDB {
      * {@code [col_id, value, col_id, value, ...]} array. Pair order is not
      * significant - each value is preceded by its own column id.
      */
+    /**
+     * Flatten a column-id-to-value map to the server's flat
+     * {@code [col_id, value, ...]} array in ascending column-id order.
+     * Stable ordering is required for idempotency keys: the server hashes the
+     * request payload, and unordered map iteration would make two commits of
+     * the same cells look like a reuse mismatch.
+     */
     static List<Object> flattenCells(Map<Long, ?> cells) {
+        List<Long> ids = new ArrayList<>(cells.keySet());
+        Collections.sort(ids);
         List<Object> flat = new ArrayList<>(cells.size() * 2);
-        for (Map.Entry<Long, ?> e : cells.entrySet()) {
-            flat.add(e.getKey());
-            flat.add(e.getValue());
+        for (Long id : ids) {
+            flat.add(id);
+            flat.add(cells.get(id));
         }
         return flat;
     }
