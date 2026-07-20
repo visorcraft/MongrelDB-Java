@@ -41,7 +41,7 @@ jobs:
     env:
       # Latest engine tag that still ships server + JNI native jars used here.
       # Bump when newer tags publish mongreldb-jni-*-linux-x64.jar again.
-      SERVER_VERSION: '0.60.3'
+      SERVER_VERSION: '0.61.1'
       MONGRELDB_URL: http://127.0.0.1:8453
     steps:
       - name: Checkout
@@ -118,7 +118,7 @@ jobs:
     env:
       # Latest engine tag that still ships server + JNI native jars used here.
       # Bump when newer tags publish mongreldb-jni-*-linux-x64.jar again.
-      SERVER_VERSION: '0.60.3'
+      SERVER_VERSION: '0.61.1'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
