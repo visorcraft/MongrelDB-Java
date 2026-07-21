@@ -21,7 +21,7 @@
 
 | Surface | Coordinates | Install |
 |---|---|---|
-| Java client | `com.visorcraft:mongreldb-java:0.61.1` | Maven / Gradle snippets below |
+| Java client | `com.visorcraft:mongreldb-java:0.62.0` | Maven / Gradle snippets below |
 
 ### Maven
 
@@ -29,20 +29,20 @@
 <dependency>
   <groupId>com.visorcraft</groupId>
   <artifactId>mongreldb-java</artifactId>
-  <version>0.61.1</version>
+  <version>0.62.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'com.visorcraft:mongreldb-java:0.61.1'
+implementation 'com.visorcraft:mongreldb-java:0.62.0'
 ```
 
 ### Gradle (Kotlin DSL)
 
 ```kotlin
-implementation("com.visorcraft:mongreldb-java:0.61.1")
+implementation("com.visorcraft:mongreldb-java:0.62.0")
 ```
 
 The artifact has no runtime dependencies - only the Java standard library.
@@ -462,7 +462,7 @@ Fetch a prebuilt server binary from the [MongrelDB releases](https://github.com/
 ```sh
 mkdir -p bin
 curl -fsSL -o bin/mongreldb-server \
-  https://github.com/visorcraft/MongrelDB/releases/download/v0.61.1/mongreldb-server-linux-x64
+  https://github.com/visorcraft/MongrelDB/releases/download/v0.62.0/mongreldb-server-linux-x64
 chmod +x bin/mongreldb-server
 ```
 
