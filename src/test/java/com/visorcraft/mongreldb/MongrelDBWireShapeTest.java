@@ -77,6 +77,66 @@ class MongrelDBWireShapeTest {
     }
 
     @Test
+    void diskannAndIvfAndProductQuantizationReachWire() throws Exception {
+        AtomicReference<byte[]> captured = new AtomicReference<>();
+        HttpServer srv = newServer("/kit/create_table", captured,
+                "{\"table_id\":1}".getBytes(StandardCharsets.UTF_8));
+        try {
+            MongrelDB db = new MongrelDB("http://127.0.0.1:" + srv.getAddress().getPort());
+            List<Map<String, Object>> columns = List.of(
+                    Map.of("id", 1L, "name", "id", "ty", "int64", "primary_key", true),
+                    Map.of("id", 2L, "name", "embedding", "ty", "embedding(384)"));
+            // Three ANN indexes exercising the swappable Phase 2 backends:
+            // DiskANN + dense, IVF + dense, and HNSW (default) + product quantization.
+            // The algorithm-specific sub-maps use LinkedHashMap so the on-wire key
+            // order matches the engine's documented field order.
+            Map<String, Object> diskannOpts = new LinkedHashMap<>();
+            diskannOpts.put("r", 128L);
+            diskannOpts.put("l", 256L);
+            diskannOpts.put("beam_width", 8L);
+            diskannOpts.put("alpha", 1.2);
+            Map<String, Object> ivfOpts = new LinkedHashMap<>();
+            ivfOpts.put("nlist", 512L);
+            ivfOpts.put("nprobe", 16L);
+            Map<String, Object> productOpts = new LinkedHashMap<>();
+            productOpts.put("training_samples", 100000L);
+            productOpts.put("seed", 7L);
+            productOpts.put("rerank_factor", 4L);
+            List<Map<String, Object>> indexes = List.of(
+                    Map.of("name", "ann_diskann", "column_id", 2L, "kind", "ann",
+                            "predicate", "embedding IS NOT NULL",
+                            "options", Map.of("ann", Map.of(
+                                    "algorithm", "diskann", "quantization", "dense",
+                                    "diskann", diskannOpts))),
+                    Map.of("name", "ann_ivf", "column_id", 2L, "kind", "ann",
+                            "predicate", "embedding IS NOT NULL",
+                            "options", Map.of("ann", Map.of(
+                                    "algorithm", "ivf", "quantization", "dense",
+                                    "ivf", ivfOpts))),
+                    Map.of("name", "ann_product", "column_id", 2L, "kind", "ann",
+                            "predicate", "embedding IS NOT NULL",
+                            "options", Map.of("ann", Map.of(
+                                    "m", 24L, "ef_construction", 96L, "ef_search", 48L,
+                                    "quantization", "product",
+                                    "product", productOpts))));
+            assertEquals(1L, db.createTable("search_docs", columns, null, indexes));
+
+            String json = asString(captured.get());
+            // DiskANN backend and its hyperparameters must reach the wire verbatim.
+            assertTrue(json.contains("\"algorithm\":\"diskann\""), "missing algorithm diskann: " + json);
+            assertTrue(json.contains("\"diskann\":{\"r\":128"), "missing diskann options: " + json);
+            // IVF backend and its hyperparameters must reach the wire verbatim.
+            assertTrue(json.contains("\"algorithm\":\"ivf\""), "missing algorithm ivf: " + json);
+            assertTrue(json.contains("\"ivf\":{\"nlist\":512"), "missing ivf options: " + json);
+            // Product quantization must reach the wire alongside its training config.
+            assertTrue(json.contains("\"quantization\":\"product\""), "missing product quantization: " + json);
+            assertTrue(json.contains("\"product\":{\"training_samples\":100000"), "missing product options: " + json);
+        } finally {
+            srv.stop(0);
+        }
+    }
+
+    @Test
     void queryBuilderIncludesOffset() {
         Map<String, Object> payload = new QueryBuilder(null, "orders").limit(10).offset(12).build();
         assertEquals(10L, payload.get("limit"));
