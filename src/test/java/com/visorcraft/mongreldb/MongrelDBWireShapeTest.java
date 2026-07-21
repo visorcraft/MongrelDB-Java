@@ -35,6 +35,48 @@ import org.junit.jupiter.api.Test;
 class MongrelDBWireShapeTest {
 
     @Test
+    void createTablePreservesAllIndexesAndEmbeddingSource() throws Exception {
+        AtomicReference<byte[]> captured = new AtomicReference<>();
+        HttpServer srv = newServer("/kit/create_table", captured,
+                "{\"table_id\":1}".getBytes(StandardCharsets.UTF_8));
+        try {
+            MongrelDB db = new MongrelDB("http://127.0.0.1:" + srv.getAddress().getPort());
+            List<Map<String, Object>> columns = List.of(
+                    Map.of("id", 1L, "name", "id", "ty", "int64", "primary_key", true),
+                    Map.of("id", 2L, "name", "embedding", "ty", "embedding(384)",
+                            "embedding_source", Map.of(
+                                    "kind", "configured_model", "provider_id", "docs",
+                                    "model_id", "model", "model_version", "1")));
+            List<Map<String, Object>> indexes = List.of(
+                    Map.of("name", "bm", "column_id", 1L, "kind", "bitmap"),
+                    Map.of("name", "fm", "column_id", 1L, "kind", "fm_index"),
+                    Map.of("name", "ann", "column_id", 2L, "kind", "ann",
+                            "predicate", "embedding IS NOT NULL", "options", Map.of("ann", Map.of(
+                                    "m", 24L, "ef_construction", 96L, "ef_search", 48L,
+                                    "quantization", "dense"))),
+                    Map.of("name", "range", "column_id", 1L, "kind", "learned_range"),
+                    Map.of("name", "minhash", "column_id", 1L, "kind", "minhash"),
+                    Map.of("name", "sparse", "column_id", 1L, "kind", "sparse"));
+            assertEquals(1L, db.createTable("search_docs", columns, null, indexes));
+
+            Map<?, ?> body = (Map<?, ?>) MongrelDB.Json.parse(captured.get());
+            List<?> wireColumns = (List<?>) body.get("columns");
+            assertEquals("configured_model",
+                    ((Map<?, ?>) ((Map<?, ?>) wireColumns.get(1)).get("embedding_source")).get("kind"));
+            List<?> wireIndexes = (List<?>) body.get("indexes");
+            assertEquals(List.of("bitmap", "fm_index", "ann", "learned_range", "minhash", "sparse"),
+                    wireIndexes.stream().map(index -> ((Map<?, ?>) index).get("kind"))
+                            .collect(java.util.stream.Collectors.toList()));
+            Map<?, ?> ann = (Map<?, ?>) wireIndexes.get(2);
+            assertEquals("dense", ((Map<?, ?>) ((Map<?, ?>) ann.get("options")).get("ann"))
+                    .get("quantization"));
+            assertEquals("embedding IS NOT NULL", ann.get("predicate"));
+        } finally {
+            srv.stop(0);
+        }
+    }
+
+    @Test
     void queryBuilderIncludesOffset() {
         Map<String, Object> payload = new QueryBuilder(null, "orders").limit(10).offset(12).build();
         assertEquals(10L, payload.get("limit"));

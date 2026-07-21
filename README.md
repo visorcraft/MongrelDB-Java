@@ -383,7 +383,7 @@ try {
 | `new MongrelDB(url, token, user, pass, httpClient)` | With a custom `java.net.http.HttpClient` |
 | `health()` | Check daemon health |
 | `tableNames()` | List table names |
-| `createTable(name, columns[, constraints])` | Create a table, optionally attach engine constraints; returns the table id |
+| `createTable(name, columns[, constraints, indexes])` | Create a table with optional constraints and all index definitions |
 | `dropTable(name)` | Drop a table |
 | `count(table)` | Row count |
 | `put(table, cells, idempotencyKey)` | Insert a row |

@@ -221,7 +221,7 @@ public final class MongrelDB {
      * @return the assigned table id
      */
     public long createTable(String name, List<Map<String, Object>> columns) {
-        return createTable(name, columns, null);
+        return createTable(name, columns, null, null);
     }
 
     /**
@@ -235,6 +235,12 @@ public final class MongrelDB {
      */
     public long createTable(String name, List<Map<String, Object>> columns,
             Map<String, Object> constraints) {
+        return createTable(name, columns, constraints, null);
+    }
+
+    /** Creates a table with full secondary-index definitions. */
+    public long createTable(String name, List<Map<String, Object>> columns,
+            Map<String, Object> constraints, List<Map<String, Object>> indexes) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(columns, "columns");
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -242,6 +248,9 @@ public final class MongrelDB {
         payload.put("columns", columns);
         if (constraints != null) {
             payload.put("constraints", constraints);
+        }
+        if (indexes != null) {
+            payload.put("indexes", indexes);
         }
         byte[] body = post("/kit/create_table", payload);
         Object parsed = body.length == 0 ? null : Json.parse(body);
