@@ -415,6 +415,72 @@ public final class MongrelDB {
         return new SearchBuilder(this, table);
     }
 
+    /**
+     * Text → embed under active semantic identity → ANN retrieve
+     * ({@code POST /kit/retrieve_text}, 0.64+).
+     *
+     * @param table table name
+     * @param embeddingColumn embedding column id
+     * @param text query text
+     * @param k optional limit (null → server default)
+     * @return map with {@code hits} and {@code provenance}
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> retrieveText(
+            String table, int embeddingColumn, String text, Integer k) {
+        Objects.requireNonNull(table, "table");
+        Objects.requireNonNull(text, "text");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("table", table);
+        payload.put("embedding_column", embeddingColumn);
+        payload.put("text", text);
+        if (k != null) {
+            payload.put("k", k);
+        }
+        byte[] body = post("/kit/retrieve_text", payload);
+        Object parsed = Json.parse(body);
+        if (parsed instanceof Map) {
+            return (Map<String, Object>) parsed;
+        }
+        Map<String, Object> empty = new LinkedHashMap<>();
+        empty.put("hits", new ArrayList<>());
+        empty.put("provenance", new LinkedHashMap<>());
+        return empty;
+    }
+
+    /**
+     * Retained SQL execution status for durable recovery
+     * ({@code GET /queries/{query_id}}).
+     */
+    @SuppressWarnings("unchecked")
+    public QueryStatus queryStatus(String queryId) {
+        Objects.requireNonNull(queryId, "queryId");
+        byte[] body = get("/queries/" + urlPathEscape(queryId));
+        Object parsed = Json.parse(body);
+        if (!(parsed instanceof Map)) {
+            throw new QueryException("query status response was not a JSON object");
+        }
+        return QueryStatus.fromMap((Map<String, Object>) parsed);
+    }
+
+    /**
+     * Request cancellation of a running SQL query
+     * ({@code POST /queries/{query_id}/cancel}).
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> cancelQuery(String queryId) {
+        Objects.requireNonNull(queryId, "queryId");
+        byte[] body = post("/queries/" + urlPathEscape(queryId) + "/cancel", new LinkedHashMap<>());
+        if (body == null || body.length == 0) {
+            return new LinkedHashMap<>();
+        }
+        Object parsed = Json.parse(body);
+        if (parsed instanceof Map) {
+            return (Map<String, Object>) parsed;
+        }
+        return new LinkedHashMap<>();
+    }
+
     // ── SQL ───────────────────────────────────────────────────────────────
 
     /**
