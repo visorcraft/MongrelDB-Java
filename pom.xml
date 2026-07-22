@@ -7,7 +7,7 @@
 
     <groupId>com.visorcraft</groupId>
     <artifactId>mongreldb-java</artifactId>
-    <version>0.64.2</version>
+    <version>0.64.3</version>
     <packaging>jar</packaging>
 
     <name>MongrelDB Java Client</name>
